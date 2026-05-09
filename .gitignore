@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.log
+.env
+.venv/
+venv/
+
+# Local training and generated artifacts are not needed by the FastAPI provider.
+curl-8.20.0_2-win64-mingw/
+datasets/tokens/
+logs/
+models/
+rag_db/

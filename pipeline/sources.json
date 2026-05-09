@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Artificial Intelligence",
+    "url": "https://en.wikipedia.org/wiki/Artificial_intelligence",
+    "type": "wiki"
+  },
+  {
+    "name": "Transformer",
+    "url": "https://en.wikipedia.org/wiki/Transformer_(deep_learning_architecture)",
+    "type": "wiki"
+  },
+  {
+    "name": "Machine Learning",
+    "url": "https://en.wikipedia.org/wiki/Machine_learning",
+    "type": "wiki"
+  },
+  {
+    "name": "Deep Learning",
+    "url": "https://en.wikipedia.org/wiki/Deep_learning",
+    "type": "wiki"
+  },
+  {
+    "name": "Natural Language Processing",
+    "url": "https://en.wikipedia.org/wiki/Natural_language_processing",
+    "type": "wiki"
+  },
+  {
+  "name": "Computer Vision",
+  "url": "https://en.wikipedia.org/wiki/Computer_vision",
+  "type": "wiki"
+},
+{
+  "name": "Reinforcement Learning",
+  "url": "https://en.wikipedia.org/wiki/Reinforcement_learning",
+  "type": "wiki"
+},
+{
+  "name": "Large Language Model",
+  "url": "https://en.wikipedia.org/wiki/Large_language_model",
+  "type": "wiki"
+}
+]
