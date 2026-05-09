@@ -26,11 +26,11 @@ def _fallback_trends(niche: str) -> List[Dict[str, str]]:
     kind = _niche_kind(niche)
     if kind == "tech":
         topics = [
-            "AI smartphone features: useful or gimmick",
-            "Best budget phone camera test",
-            "Laptop buying guide: Intel vs AMD vs Snapdragon",
-            "Best earbuds for calls, gaming, and battery life",
-            "Creator desk gadgets under a budget",
+            "AI phones vs normal phones: what actually changes",
+            "foldable phones durability and repair cost test",
+            "budget laptops getting expensive because of AI memory demand",
+            "camera-focused phones: zoom, low light, and video test",
+            "smart rings and wearables worth buying this year",
         ]
     elif kind == "gaming":
         topics = [
@@ -95,11 +95,25 @@ def _fallback_trends(niche: str) -> List[Dict[str, str]]:
             "name": topic,
             "title": topic,
             "url": "",
-            "snippet": f"Actionable {niche} video idea selected for this week's creator plan.",
+            "snippet": _fallback_reason(niche, topic),
             "score": 95 - (index * 7),
         }
         for index, topic in enumerate(topics)
     ]
+
+
+def _fallback_reason(niche: str, topic: str) -> str:
+    kind = _niche_kind(niche)
+    reasons = {
+        "tech": f"Review angle: turn '{topic}' into a viewer decision with price, battery, camera/performance, and who should skip it.",
+        "gaming": f"Gameplay angle: make '{topic}' useful with one proof clip, exact settings, and a beginner mistake to fix.",
+        "cooking": f"Recipe angle: make '{topic}' practical with final dish first, ingredients, texture checkpoints, and one shortcut.",
+        "fitness": f"Routine angle: make '{topic}' beginner-safe with form checks, common mistakes, and a 7-day progression.",
+        "education": f"Learning angle: teach '{topic}' with one rule, two examples, and one practice question.",
+        "beauty": f"Style angle: make '{topic}' visual with before-after proof, affordable steps, and one mistake to avoid.",
+        "finance": f"Money angle: explain '{topic}' with simple numbers, one action step, and one mistake to avoid.",
+    }
+    return reasons.get(kind, f"Creator angle: turn '{topic}' into a clear step-by-step video with proof and a viewer action.")
 
 
 def _is_cooking_niche(niche: str) -> bool:
@@ -328,6 +342,12 @@ def _content_pack(niche: str, trend: str, secondary: str, lang: str) -> Dict[str
         }
         return templates[kind]
 
+    review_scripts = {
+        "hook": f"I tested {trend} like a normal buyer, and the answer is not as simple as the hype.",
+        "ingredients": "Test one is daily use. Test two is the hidden tradeoff. Test three is whether the price makes sense.",
+        "cook": "Here is the real-world test result and what it means for you.",
+        "finish": "My final verdict is simple: buy, wait, or skip based on these results.",
+    }
     return {
         "content_type": "review",
         "titles": {
@@ -340,32 +360,136 @@ def _content_pack(niche: str, trend: str, secondary: str, lang: str) -> Dict[str
             "and decide who should use it, buy it, or skip it."
         ),
         "tags": ["youtube growth", niche, trend, secondary, "review", "comparison", "buyer guide", "TubeCoach", "BaiuGPT"],
-        "thumbnail": f"Show {trend} with a big verdict word like WORTH IT? or SKIP? and one clean product/result image.",
+        "thumbnail": f"Show {trend} with one proof visual: price, camera sample, battery number, repair risk, or speed result.",
         "first_comment": f"Should I test {secondary} next? Comment your choice.",
-        "scripts": {
-            "hook": f"Before you buy, try, or skip this, here are the 3 things that matter most in {lang}.",
-            "ingredients": "Point one is value. Point two is real-world use. Point three is who should avoid it.",
-            "cook": "Here is the real-world test result and what it means for you.",
-            "finish": "My final verdict is simple: choose it only if these points match your need.",
-        },
+        "scripts": review_scripts,
     }
 
 
 def _short_topic(title: str, niche: str) -> str:
-    title = re.sub(r"\s*[-–|:]\s*(YouTube|Google|Forbes|Reddit|Guide|Review|AIR Media-Tech|Beacons).*$", "", title, flags=re.I)
+    title = re.sub(r"\s*[-–|:]\s*(YouTube|Google|Forbes|Reddit|Guide|Review|AIR Media-Tech|Beacons|Tom's Guide|TechRadar|Android Central|Android Authority|PhoneArena).*$", "", title, flags=re.I)
     title = re.sub(r"\b(2024|2025|2026)\b", "", title)
+    title = re.sub(r"\b(best|top)\s+\d+\s+", "", title, flags=re.I)
+    title = re.sub(r"\b(the\s+)?best\s+", "", title, flags=re.I)
     title = re.sub(r"\s+", " ", title).strip(" -:|")
     if len(title) > 72:
         title = title[:72].rsplit(" ", 1)[0]
     return title or f"{niche} trend"
 
 
+def _tech_review_topic(title: str, snippet: str) -> str:
+    blob = f"{title} {snippet}".lower()
+    if "smartphone trends" in blob:
+        return "smartphone trends to test: AI, battery, foldables, and price"
+    if "phones we've tested" in blob or "best phones" in blob or "top smartphones" in blob:
+        return "smartphone buyer guide: best value, camera, battery, and updates"
+    if ("buyer" in blob or "buying" in blob) and ("smartphone" in blob or "mobile phone" in blob or "phone" in blob):
+        return "smartphone buyer guide: best value, camera, battery, and updates"
+    if "ramageddon" in blob or "memory" in blob and ("laptop" in blob or "phone" in blob):
+        return "AI memory shortage: should viewers buy phones and laptops now"
+    if "fold" in blob or "foldable" in blob:
+        return "foldable phones durability, repair cost, and buyer risk"
+    if "ai phone" in blob or "ai phones" in blob or "ai features" in blob:
+        return "AI phone features: useful tools or marketing gimmick"
+    if "camera" in blob or "photography" in blob or "zoom" in blob:
+        return "camera phone test: zoom, low light, and video quality"
+    if "laptop" in blob or "macbook" in blob or "chromebook" in blob:
+        return "laptop buying guide: performance, battery, and upgrade timing"
+    if "earbuds" in blob or "headphones" in blob or "audio" in blob:
+        return "earbuds review: calls, gaming latency, and battery life"
+    if "wearable" in blob or "smart ring" in blob or "smartwatch" in blob:
+        return "wearable tech review: smart ring vs smartwatch value"
+    if "ces" in blob or "mwc" in blob:
+        return "new tech launch roundup: what is actually worth watching"
+    return _short_topic(title, "Tech Reviews")
+
+
+def _trend_query(niche: str, intent: str = "") -> str:
+    kind = _niche_kind(niche)
+    if kind == "tech":
+        return (
+            "latest 2026 consumer tech review trends AI phones foldable phones laptops "
+            "earbuds wearables camera phones buyer questions price battery performance "
+            f"{intent}"
+        )
+    return (
+        f"{niche} latest product trends buyer questions comparison topics "
+        f"new launches problems worth it review ideas {intent}"
+    )
+
+
+def _trend_queries(niche: str, intent: str = "") -> List[str]:
+    kind = _niche_kind(niche)
+    if kind == "tech":
+        return [
+            _trend_query(niche, intent),
+            "2026 smartphone trends AI phones foldables camera phones battery price review",
+            "2026 consumer tech launches laptops earbuds wearables buyer guide review",
+        ]
+    return [_trend_query(niche, intent)]
+
+
+def _is_live_trend_result(niche: str, title: str, url: str, snippet: str) -> bool:
+    kind = _niche_kind(niche)
+    blob = f"{title} {url} {snippet}".lower()
+    blocked = (
+        "dictionary",
+        "definition",
+        "windows account",
+        "login",
+        "username",
+        "top tech youtubers",
+        "tech review youtubers",
+        "tech youtube channels",
+        "popular tech reviewers",
+        "influencer list",
+        "news sites",
+        "sites to follow",
+        "shopify",
+        "examples and trends",
+        "youtube channels to watch",
+        "about press copyright",
+        "privacy policy",
+        "terms",
+        "amazon.",
+        "flipkart.",
+        "best prices",
+        "buy mobile phones online",
+        "coupon",
+        "deals",
+        "crypto",
+        "nft",
+        "blockchain",
+        "insurance",
+        "foundation partners",
+        "youtube.com",
+        "tiktok.com",
+        "latest & new smartphones",
+        "list of all",
+    )
+    if not title or any(term in blob for term in blocked):
+        return False
+    if kind != "tech":
+        return True
+
+    tech_terms = (
+        "phone", "smartphone", "android", "iphone", "foldable", "laptop", "macbook",
+        "earbuds", "headphones", "wearable", "smartwatch", "smart ring", "camera",
+        "battery", "chip", "snapdragon", "mediatek", "intel", "amd", "artificial intelligence",
+        "ai phone", "ai-powered", "ces", "mwc", "gadget", "tablet", "vr", "ar", "console",
+    )
+    review_terms = (
+        "review", "tested", "best", "buy", "price", "worth", "guide", "launch",
+        "announced", "hands-on", "comparison", "durability", "repair", "battery",
+        "performance", "buyers", "buying", "trend", "trends", "forecast",
+    )
+    return any(term in blob for term in tech_terms) and any(term in blob for term in review_terms)
+
+
 def _trend_context(niche: str, intent: str = "") -> List[Dict[str, str]]:
     lower_niche = niche.lower()
     if (
-        "tech" in lower_niche
-        or "review" in lower_niche
-        or "gaming" in lower_niche
+        "gaming" in lower_niche
         or "game" in lower_niche
         or "gamer" in lower_niche
         or "esports" in lower_niche
@@ -383,54 +507,43 @@ def _trend_context(niche: str, intent: str = "") -> List[Dict[str, str]]:
     ):
         return _fallback_trends(niche)
 
-    query = (
-        f"{niche} latest product trends buyer questions comparison topics "
-        f"new launches problems worth it review ideas {intent}"
-    )
-    try:
-        results = search_web(query, max_results=8)
-    except Exception:
-        results = []
+    results = []
+    for query in _trend_queries(niche, intent):
+        try:
+            results.extend(search_web(query, max_results=8))
+        except Exception:
+            continue
 
     trends = []
-    blocked = (
-        "dictionary",
-        "definition",
-        "windows account",
-        "login",
-        "username",
-        "top tech youtubers",
-        "tech review youtubers",
-        "tech youtube channels",
-        "popular tech reviewers",
-        "influencer list",
-        "news sites",
-        "sites to follow",
-        "techradar",
-        "shopify",
-        "examples and trends",
-        "youtube channels to watch",
-    )
     for result in results:
         title = _clean_text(result.get("title"))
         url = _clean_text(result.get("url"))
         snippet = _clean_text(result.get("snippet"))
-        blob = f"{title} {url} {snippet}".lower()
-        if not title or any(term in blob for term in blocked):
+        if not _is_live_trend_result(niche, title, url, snippet):
+            continue
+        topic = _tech_review_topic(title, snippet) if _niche_kind(niche) == "tech" else _short_topic(title, niche)
+        if ".com" in topic.lower() or "/" in topic:
+            continue
+        if any(topic.lower() == item["topic"].lower() for item in trends):
             continue
         trends.append({
-            "topic": _short_topic(title, niche),
-            "name": _short_topic(title, niche),
+            "topic": topic,
+            "name": topic,
             "title": title,
             "url": url,
-            "snippet": snippet,
+            "snippet": snippet or _fallback_reason(niche, topic),
             "score": 95 - (len(trends) * 7),
         })
         if len(trends) >= 5:
             break
 
     if len(trends) < 3:
-        return _fallback_trends(niche)
+        for item in _fallback_trends(niche):
+            if any(item["topic"].lower() == trend["topic"].lower() for trend in trends):
+                continue
+            trends.append(item)
+            if len(trends) >= 5:
+                break
 
     return trends
 
@@ -476,9 +589,9 @@ def _weekly_task_copy(content_type: str, primary: str, secondary: str, third: st
             "seo": "Write titles around explained simply, money mistake, and starter plan; use a clean number-based thumbnail.",
         },
         "review": {
-            "video": f"Use the trend angle '{primary}' and open with the viewer payoff in {lang}.",
-            "short": "Give one clear yes/no verdict, one proof point, and one comment question.",
-            "seo": "Write 3 titles: best-for-budget, mistake-to-avoid, and honest-verdict.",
+            "video": f"Turn '{primary}' into a decision-first review: who should care, what to test, and who should skip.",
+            "short": "Cut one proof moment: price shock, camera sample, battery result, repair risk, or before-after test.",
+            "seo": "Write titles around viewer decision, real test result, and upgrade/buying mistake.",
         },
         "general": {
             "video": "Create a step-by-step video with one clear result, proof example, and viewer action.",
@@ -495,43 +608,43 @@ def _task_guide_steps(content_type: str, title: str, trend: str, secondary: str,
         return [
             {
                 "stepNum": 1,
-                "title": "Choose the viewer decision",
+                "title": "Find the buyer question",
                 "timestamp": "Planning",
                 "duration": "20 min",
-                "what": f"Connect '{title}' to the current review angle '{trend}' and decide the one question viewers need answered.",
-                "script": f"Today I am testing {trend} so you can decide faster.",
-                "onScreen": "Show the product, result, price/value point, or comparison table immediately.",
-                "tip": "A review works best when viewers know a clear decision is coming.",
+                "what": f"Turn '{trend}' into one viewer question: buy now, wait, upgrade, repair, choose cheaper, or avoid.",
+                "script": f"Today I am checking {trend} from a normal buyer's point of view.",
+                "onScreen": "Show the device/category, price or problem, and the final test result immediately.",
+                "tip": "A tech review feels smarter when it answers a real buying decision, not just a topic.",
             },
             {
                 "stepNum": 2,
-                "title": "Open with the verdict",
+                "title": "Open with the result",
                 "timestamp": "0:00 - 0:15",
                 "duration": "30 min",
-                "what": "Say the verdict first, then tease the proof.",
+                "what": "Show the result first, then say what you tested.",
                 "script": scripts["hook"],
-                "onScreen": "Show a before-after, side-by-side comparison, or result card.",
-                "tip": "Do not hide the answer too long. Use the video to prove it.",
+                "onScreen": "Use a camera sample, battery number, speed test, price card, repair score, or side-by-side result.",
+                "tip": "Viewers stay longer when the proof starts before the explanation.",
             },
             {
                 "stepNum": 3,
-                "title": "Prove with three tests",
+                "title": "Run three viewer tests",
                 "timestamp": "0:15 - 3:00",
                 "duration": "90 min",
-                "what": f"Compare '{trend}' against '{secondary}' using 3 viewer-first criteria.",
-                "script": scripts["ingredients"],
-                "onScreen": "Use score cards, close-ups, screen recordings, or quick captions for each criterion.",
-                "tip": "Make each test visible so the verdict feels earned.",
+                "what": f"Test '{trend}' against '{secondary}' using 3 criteria viewers care about: price, daily use, and hidden tradeoff.",
+                "script": "Test one is daily use. Test two is the hidden tradeoff. Test three is whether the price makes sense.",
+                "onScreen": "Use score cards, close-ups, screen recordings, sample shots, benchmarks, or battery/cost captions.",
+                "tip": "Show evidence on screen. Do not just say the opinion.",
             },
             {
                 "stepNum": 4,
-                "title": "Package the verdict",
+                "title": "Package the decision",
                 "timestamp": "Upload",
                 "duration": "45 min",
-                "what": "Create one title for search and one thumbnail for curiosity.",
+                "what": "Create a title and thumbnail that make the viewer decision obvious.",
                 "script": scripts["finish"],
-                "onScreen": "Thumbnail: main object/result, one verdict word, high contrast.",
-                "tip": "Use the trend phrase in the title, but keep the thumbnail simple.",
+                "onScreen": "Thumbnail: device/category plus one result word like WAIT, BUY, SKIP, or TESTED.",
+                "tip": "The title should say the decision; the thumbnail should show the proof or conflict.",
             },
         ]
 
@@ -797,8 +910,19 @@ def generate_task_guide(payload: Dict[str, Any]) -> Dict[str, Any]:
     niche = task.get("niche") or payload.get("profile", {}).get("niche") or "content creation"
     lang = task.get("lang") or payload.get("profile", {}).get("lang") or "English"
     trends = _trend_context(niche, title)
-    trend = trends[0]["topic"]
-    secondary = trends[1]["topic"] if len(trends) > 1 else f"{niche} comparison"
+    requested_topic = re.sub(r"^(Create|Short|Package):\s*", "", _clean_text(title), flags=re.I)
+    trend_topics = [item["topic"] for item in trends]
+    trend = requested_topic if requested_topic and requested_topic not in {"TubeCoach task", "Script+SEO"} else trends[0]["topic"]
+    if trend not in trend_topics:
+        trends = [{
+            "topic": trend,
+            "name": trend,
+            "title": trend,
+            "url": "",
+            "snippet": _fallback_reason(niche, trend),
+            "score": 96,
+        }] + trends
+    secondary = next((item["topic"] for item in trends if item["topic"].lower() != trend.lower()), f"{niche} comparison")
     is_cooking = _is_cooking_niche(niche)
     pack = _content_pack(niche, trend, secondary, lang)
 
