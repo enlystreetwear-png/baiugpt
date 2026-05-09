@@ -42,11 +42,11 @@ def _fallback_trends(niche: str) -> List[Dict[str, str]]:
         ]
     elif "cook" in lower or "food" in lower or "recipe" in lower:
         topics = [
-            "5-minute breakfast recipe for busy mornings",
-            "High-protein lunch box under budget",
-            "One-pot dinner with simple ingredients",
-            "Street-style recipe made healthier at home",
-            "No-oven dessert with 3 ingredients",
+            "5-minute rava upma breakfast",
+            "high-protein paneer lunch box",
+            "one-pot tomato rice dinner",
+            "street-style chilli idli at home",
+            "no-oven biscuit pudding",
         ]
     else:
         topics = [
@@ -68,6 +68,87 @@ def _fallback_trends(niche: str) -> List[Dict[str, str]]:
         }
         for index, topic in enumerate(topics)
     ]
+
+
+def _is_cooking_niche(niche: str) -> bool:
+    return any(term in niche.lower() for term in ("cook", "food", "recipe"))
+
+
+def _is_tamil(lang: str) -> bool:
+    return "tamil" in lang.lower()
+
+
+def _cooking_script_lines(trend: str, lang: str) -> Dict[str, str]:
+    if _is_tamil(lang):
+        return {
+            "hook": f"இன்று {trend} ரெசிபியை ரொம்ப சுலபமா, வீட்டில் இருக்கிற பொருட்களோட செய்து காட்ட போறேன்.",
+            "ingredients": "தேவையான பொருட்கள் எல்லாம் screen-ல இருக்கு. அளவுகளை சரியா follow பண்ணுங்க, taste perfect ஆகும்.",
+            "cook": "இப்போ flame medium-ல வைத்து, இந்த texture வரும் வரை mix பண்ணணும். இதுதான் taste-க்கு முக்கியமான step.",
+            "finish": "இந்த மாதிரி soft/crispy texture வந்ததும் ready. Try பண்ணிட்டு comment-ல எப்படி வந்துச்சுனு சொல்லுங்க.",
+        }
+
+    return {
+        "hook": f"Today I am making {trend} with simple ingredients and a shortcut that keeps the taste strong.",
+        "ingredients": "Here are all the ingredients. Keep the measurements close so the texture comes out right.",
+        "cook": "Cook on medium heat until you see this texture. This is the step that builds the flavor.",
+        "finish": "Once it looks like this, plate it hot. Try it and comment what recipe I should make next.",
+    }
+
+
+def _content_pack(niche: str, trend: str, secondary: str, lang: str) -> Dict[str, Any]:
+    if _is_cooking_niche(niche):
+        scripts = _cooking_script_lines(trend, lang)
+        title_topic = trend.replace(" recipe", "").strip()
+        return {
+            "content_type": "recipe",
+            "titles": {
+                "option1": f"{title_topic.title()} | Easy Tamil Home Recipe" if _is_tamil(lang) else f"{title_topic.title()} | Easy Home Recipe",
+                "option2": f"{title_topic.title()} in 10 Minutes | No Complicated Steps",
+                "option3": f"Quick {title_topic.title()} for Busy Days",
+            },
+            "description": (
+                f"Learn how to make {trend} with simple ingredients, clear measurements, texture checkpoints, "
+                f"and beginner-friendly cooking tips. This video is designed for quick home cooking and easy repeat practice."
+            ),
+            "tags": [
+                "easy recipe",
+                "quick recipe",
+                "home cooking",
+                "Tamil recipe" if _is_tamil(lang) else "cooking",
+                trend,
+                secondary,
+                "breakfast recipe",
+                "lunch box recipe",
+                "simple ingredients",
+                "TubeCoach",
+                "BaiuGPT",
+            ],
+            "thumbnail": f"Close-up finished dish, spoon lift or break shot, steam/texture visible, text: {trend.split()[0].upper()} READY.",
+            "first_comment": f"Should I make {secondary} next? Comment YES or tell me your favorite dish.",
+            "scripts": scripts,
+        }
+
+    return {
+        "content_type": "review",
+        "titles": {
+            "option1": f"{trend}: Worth It or Overhyped?",
+            "option2": f"Before You Choose {trend}, Watch This",
+            "option3": f"{trend} vs {secondary}: Honest Verdict",
+        },
+        "description": (
+            f"In this {lang} {niche} video, we look at {trend}, compare it with {secondary}, "
+            "and decide who should use it, buy it, or skip it."
+        ),
+        "tags": ["youtube growth", niche, trend, secondary, "review", "comparison", "buyer guide", "TubeCoach", "BaiuGPT"],
+        "thumbnail": f"Show {trend} with a big verdict word like WORTH IT? or SKIP? and one clean product/result image.",
+        "first_comment": f"Should I test {secondary} next? Comment your choice.",
+        "scripts": {
+            "hook": f"Before you buy, try, or skip this, here are the 3 things that matter most in {lang}.",
+            "ingredients": "Point one is value. Point two is real-world use. Point three is who should avoid it.",
+            "cook": "Here is the real-world test result and what it means for you.",
+            "finish": "My final verdict is simple: choose it only if these points match your need.",
+        },
+    }
 
 
 def _short_topic(title: str, niche: str) -> str:
@@ -162,13 +243,19 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
     primary = trends[0]["topic"]
     secondary = trends[1]["topic"] if len(trends) > 1 else f"{niche} comparison"
     third = trends[2]["topic"] if len(trends) > 2 else f"{niche} buyer guide"
+    pack = _content_pack(niche, primary, secondary, lang)
+    is_recipe = pack["content_type"] == "recipe"
 
     tasks = [
         {
             "id": "idea-1",
             "type": "video",
-            "title": f"Make a trend-backed video: {primary}",
-            "detail": f"Use the trend angle '{primary}' and open with the viewer payoff in {lang}.",
+            "title": f"Create: {primary}",
+            "detail": (
+                f"Record a complete recipe video with final dish first, ingredients, cooking checkpoints, and plating."
+                if is_recipe else
+                f"Use the trend angle '{primary}' and open with the viewer payoff in {lang}."
+            ),
             "time": "2-3 hours",
             "priority": "high",
             "isIdea": True,
@@ -177,8 +264,12 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
         {
             "id": "short-1",
             "type": "short",
-            "title": f"Post a 45-second verdict Short: {secondary}",
-            "detail": "Give one clear yes/no verdict, one proof point, and one comment question.",
+            "title": f"Short: {secondary}",
+            "detail": (
+                "Make a 30-45 second Short showing the final dish, 3 fast steps, and one taste/texture close-up."
+                if is_recipe else
+                "Give one clear yes/no verdict, one proof point, and one comment question."
+            ),
             "time": "60 min",
             "priority": "high",
             "isIdea": True,
@@ -187,8 +278,12 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
         {
             "id": "thumb-1",
             "type": "seo",
-            "title": f"Package a buyer-guide angle: {third}",
-            "detail": "Write 3 titles: best-for-budget, mistake-to-avoid, and honest-verdict.",
+            "title": f"Package: {third}",
+            "detail": (
+                "Create 3 title options, a food close-up thumbnail, description, tags, and pinned comment."
+                if is_recipe else
+                "Write 3 titles: best-for-budget, mistake-to-avoid, and honest-verdict."
+            ),
             "time": "45 min",
             "priority": "medium",
             "trendReason": trends[2].get("snippet") if len(trends) > 2 else "",
@@ -362,7 +457,8 @@ def generate_task_guide(payload: Dict[str, Any]) -> Dict[str, Any]:
     trends = _trend_context(niche, title)
     trend = trends[0]["topic"]
     secondary = trends[1]["topic"] if len(trends) > 1 else f"{niche} comparison"
-    is_cooking = any(term in niche.lower() for term in ("cook", "food", "recipe"))
+    is_cooking = _is_cooking_niche(niche)
+    pack = _content_pack(niche, trend, secondary, lang)
 
     if is_cooking:
         return {
@@ -370,55 +466,51 @@ def generate_task_guide(payload: Dict[str, Any]) -> Dict[str, Any]:
             "steps": [
                 {
                     "stepNum": 1,
-                    "title": "Pick the exact dish promise",
+                    "title": "Plan the recipe promise",
                     "timestamp": "Planning",
                     "duration": "20 min",
-                    "what": f"Turn '{trend}' into one clear promise: fast, healthy, budget, beginner-friendly, or restaurant-style.",
-                    "script": f"Today I am making {trend} in a simple way, with ingredients you can actually find at home.",
+                    "what": f"Turn '{trend}' into one clear promise: quick, budget, healthy, kid-friendly, or hotel-style.",
+                    "script": pack["scripts"]["hook"],
                     "onScreen": "Show the finished dish first, then show all ingredients in one clean shot.",
-                    "tip": "Food videos work best when viewers see the final result before the steps.",
+                    "tip": "Start with the final dish. Viewers decide to watch with their eyes first.",
                 },
                 {
                     "stepNum": 2,
-                    "title": "Record the hook and ingredients",
+                    "title": "Shoot ingredients and prep",
                     "timestamp": "0:00 - 0:20",
                     "duration": "25 min",
-                    "what": "Start with the plated dish, break it open or taste it, then show the ingredient list.",
-                    "script": f"If you want a {niche} idea that is quick and tasty, this one is ready without complicated steps.",
-                    "onScreen": "Use quick cuts: final plate, texture close-up, ingredients, first cooking action.",
-                    "tip": "Avoid long talking. Let the food visuals sell the video.",
+                    "what": "Show exact ingredients, quantities, substitutions, and one prep shortcut.",
+                    "script": pack["scripts"]["ingredients"],
+                    "onScreen": "Ingredient flat-lay, measurement captions, chopping/prep close-ups.",
+                    "tip": "Keep measurements on screen long enough to pause and read.",
                 },
                 {
                     "stepNum": 3,
-                    "title": "Film each cooking step clearly",
+                    "title": "Film texture checkpoints",
                     "timestamp": "0:20 - 2:30",
                     "duration": "75 min",
-                    "what": "Show chopping, mixing, cooking temperature, texture checkpoints, and common mistakes.",
-                    "script": "Cook until this texture appears. Do not rush this step, because this is where the taste comes from.",
-                    "onScreen": "Add captions for measurements, flame level, timing, and texture changes.",
-                    "tip": "For Tamil viewers, keep key measurements visible on screen while explaining naturally.",
+                    "what": "Show flame level, timing, color change, texture, and the mistake to avoid.",
+                    "script": pack["scripts"]["cook"],
+                    "onScreen": "Close-ups of pan/pot texture, timer overlay, flame level caption.",
+                    "tip": "Texture checkpoints make the recipe feel trustworthy and easy to repeat.",
                 },
                 {
                     "stepNum": 4,
-                    "title": "Package for Shorts and search",
+                    "title": "Plate, taste, and create Shorts",
                     "timestamp": "Upload",
                     "duration": "40 min",
-                    "what": "Create one long video and two Shorts: one final reveal, one mistake/tip clip.",
-                    "script": "Save this recipe and comment what dish I should make next.",
-                    "onScreen": "Thumbnail should show the finished dish, steam/texture, and 2-3 words only.",
-                    "tip": "Use sensory words like crispy, creamy, spicy, soft, budget, and quick.",
+                    "what": "Record final plating, taste reaction, and two Shorts: final reveal plus one mistake/tip.",
+                    "script": pack["scripts"]["finish"],
+                    "onScreen": "Final plate close-up, spoon pull/break shot, text overlay with recipe name.",
+                    "tip": "Use sensory words like crispy, creamy, spicy, soft, quick, and budget.",
                 },
             ],
             "seoContent": {
-                "title": {
-                    "option1": f"{trend} | Easy Tamil Recipe",
-                    "option2": f"{trend} in Simple Steps",
-                    "option3": f"Quick {niche} Recipe Everyone Can Try",
-                },
-                "description": f"In this {lang} cooking video, learn how to make {trend} with simple ingredients, clear steps, and beginner-friendly tips.",
-                "tags": ["cooking", niche, trend, "easy recipe", "Tamil recipe", "home cooking", "quick recipe", "TubeCoach", "BaiuGPT"],
-                "thumbnailConcept": f"Close-up of the finished {trend}, one spoon/fork action shot, and text: EASY RECIPE.",
-                "firstComment": f"Should I make {secondary} next? Comment your choice.",
+                "title": pack["titles"],
+                "description": pack["description"],
+                "tags": pack["tags"],
+                "thumbnailConcept": pack["thumbnail"],
+                "firstComment": pack["first_comment"],
             },
             "trends": trends,
             "sources": _trend_sources(trends),
@@ -469,15 +561,11 @@ def generate_task_guide(payload: Dict[str, Any]) -> Dict[str, Any]:
             },
         ],
         "seoContent": {
-            "title": {
-                "option1": f"{trend}: Worth It or Overhyped?",
-                "option2": f"Before You Choose {trend}, Watch This",
-                "option3": f"{trend} vs {secondary}: Honest Verdict",
-            },
-            "description": f"In this {lang} {niche} video, we look at {trend}, compare it with {secondary}, and decide who should use it, buy it, or skip it.",
-            "tags": ["youtube growth", niche, trend, secondary, "review", "comparison", "buyer guide", "TubeCoach", "BaiuGPT"],
-            "thumbnailConcept": f"Show {trend} with a big verdict word like WORTH IT? or SKIP? and one clean product/result image.",
-            "firstComment": f"Should I test {secondary} next? Comment your choice.",
+            "title": pack["titles"],
+            "description": pack["description"],
+            "tags": pack["tags"],
+            "thumbnailConcept": pack["thumbnail"],
+            "firstComment": pack["first_comment"],
         },
         "trends": trends,
         "sources": _trend_sources(trends),
