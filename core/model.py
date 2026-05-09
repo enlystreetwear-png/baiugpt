@@ -40,6 +40,14 @@ def _fallback_trends(niche: str) -> List[Dict[str, str]]:
             "Budget gaming setup tips",
             "Challenge run with a clear rule",
         ]
+    elif "cook" in lower or "food" in lower or "recipe" in lower:
+        topics = [
+            "5-minute breakfast recipe for busy mornings",
+            "High-protein lunch box under budget",
+            "One-pot dinner with simple ingredients",
+            "Street-style recipe made healthier at home",
+            "No-oven dessert with 3 ingredients",
+        ]
     else:
         topics = [
             f"{niche} beginner mistakes",
@@ -49,7 +57,17 @@ def _fallback_trends(niche: str) -> List[Dict[str, str]]:
             f"{niche} weekly challenge",
         ]
 
-    return [{"topic": topic, "title": topic, "url": "", "snippet": ""} for topic in topics]
+    return [
+        {
+            "topic": topic,
+            "name": topic,
+            "title": topic,
+            "url": "",
+            "snippet": f"Actionable {niche} video idea selected for this week's creator plan.",
+            "score": 95 - (index * 7),
+        }
+        for index, topic in enumerate(topics)
+    ]
 
 
 def _short_topic(title: str, niche: str) -> str:
@@ -63,7 +81,13 @@ def _short_topic(title: str, niche: str) -> str:
 
 def _trend_context(niche: str, intent: str = "") -> List[Dict[str, str]]:
     lower_niche = niche.lower()
-    if "tech" in lower_niche or "review" in lower_niche:
+    if (
+        "tech" in lower_niche
+        or "review" in lower_niche
+        or "cook" in lower_niche
+        or "food" in lower_niche
+        or "recipe" in lower_niche
+    ):
         return _fallback_trends(niche)
 
     query = (
@@ -103,9 +127,11 @@ def _trend_context(niche: str, intent: str = "") -> List[Dict[str, str]]:
             continue
         trends.append({
             "topic": _short_topic(title, niche),
+            "name": _short_topic(title, niche),
             "title": title,
             "url": url,
             "snippet": snippet,
+            "score": 95 - (len(trends) * 7),
         })
         if len(trends) >= 5:
             break
@@ -336,6 +362,67 @@ def generate_task_guide(payload: Dict[str, Any]) -> Dict[str, Any]:
     trends = _trend_context(niche, title)
     trend = trends[0]["topic"]
     secondary = trends[1]["topic"] if len(trends) > 1 else f"{niche} comparison"
+    is_cooking = any(term in niche.lower() for term in ("cook", "food", "recipe"))
+
+    if is_cooking:
+        return {
+            "totalTime": "2-3 hours",
+            "steps": [
+                {
+                    "stepNum": 1,
+                    "title": "Pick the exact dish promise",
+                    "timestamp": "Planning",
+                    "duration": "20 min",
+                    "what": f"Turn '{trend}' into one clear promise: fast, healthy, budget, beginner-friendly, or restaurant-style.",
+                    "script": f"Today I am making {trend} in a simple way, with ingredients you can actually find at home.",
+                    "onScreen": "Show the finished dish first, then show all ingredients in one clean shot.",
+                    "tip": "Food videos work best when viewers see the final result before the steps.",
+                },
+                {
+                    "stepNum": 2,
+                    "title": "Record the hook and ingredients",
+                    "timestamp": "0:00 - 0:20",
+                    "duration": "25 min",
+                    "what": "Start with the plated dish, break it open or taste it, then show the ingredient list.",
+                    "script": f"If you want a {niche} idea that is quick and tasty, this one is ready without complicated steps.",
+                    "onScreen": "Use quick cuts: final plate, texture close-up, ingredients, first cooking action.",
+                    "tip": "Avoid long talking. Let the food visuals sell the video.",
+                },
+                {
+                    "stepNum": 3,
+                    "title": "Film each cooking step clearly",
+                    "timestamp": "0:20 - 2:30",
+                    "duration": "75 min",
+                    "what": "Show chopping, mixing, cooking temperature, texture checkpoints, and common mistakes.",
+                    "script": "Cook until this texture appears. Do not rush this step, because this is where the taste comes from.",
+                    "onScreen": "Add captions for measurements, flame level, timing, and texture changes.",
+                    "tip": "For Tamil viewers, keep key measurements visible on screen while explaining naturally.",
+                },
+                {
+                    "stepNum": 4,
+                    "title": "Package for Shorts and search",
+                    "timestamp": "Upload",
+                    "duration": "40 min",
+                    "what": "Create one long video and two Shorts: one final reveal, one mistake/tip clip.",
+                    "script": "Save this recipe and comment what dish I should make next.",
+                    "onScreen": "Thumbnail should show the finished dish, steam/texture, and 2-3 words only.",
+                    "tip": "Use sensory words like crispy, creamy, spicy, soft, budget, and quick.",
+                },
+            ],
+            "seoContent": {
+                "title": {
+                    "option1": f"{trend} | Easy Tamil Recipe",
+                    "option2": f"{trend} in Simple Steps",
+                    "option3": f"Quick {niche} Recipe Everyone Can Try",
+                },
+                "description": f"In this {lang} cooking video, learn how to make {trend} with simple ingredients, clear steps, and beginner-friendly tips.",
+                "tags": ["cooking", niche, trend, "easy recipe", "Tamil recipe", "home cooking", "quick recipe", "TubeCoach", "BaiuGPT"],
+                "thumbnailConcept": f"Close-up of the finished {trend}, one spoon/fork action shot, and text: EASY RECIPE.",
+                "firstComment": f"Should I make {secondary} next? Comment your choice.",
+            },
+            "trends": trends,
+            "sources": _trend_sources(trends),
+        }
 
     return {
         "totalTime": "3-4 hours",
