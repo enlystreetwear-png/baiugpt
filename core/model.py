@@ -34,11 +34,11 @@ def _fallback_trends(niche: str) -> List[Dict[str, str]]:
         ]
     elif "gaming" in lower:
         topics = [
-            "Best settings for smoother gameplay",
-            "New update explained simply",
-            "Beginner mistakes to avoid",
-            "Budget gaming setup tips",
-            "Challenge run with a clear rule",
+            "best sensitivity and HUD settings for beginners",
+            "new season update explained in simple Tamil",
+            "top 5 mistakes that make players lose fights",
+            "budget gaming phone settings for smooth FPS",
+            "one-life challenge gameplay with clutch moments",
         ]
     elif "cook" in lower or "food" in lower or "recipe" in lower:
         topics = [
@@ -72,6 +72,10 @@ def _fallback_trends(niche: str) -> List[Dict[str, str]]:
 
 def _is_cooking_niche(niche: str) -> bool:
     return any(term in niche.lower() for term in ("cook", "food", "recipe"))
+
+
+def _is_gaming_niche(niche: str) -> bool:
+    return any(term in niche.lower() for term in ("game", "gaming", "gamer", "esports"))
 
 
 def _is_tamil(lang: str) -> bool:
@@ -128,6 +132,44 @@ def _content_pack(niche: str, trend: str, secondary: str, lang: str) -> Dict[str
             "scripts": scripts,
         }
 
+    if _is_gaming_niche(niche):
+        return {
+            "content_type": "gaming",
+            "titles": {
+                "option1": f"{trend.title()} | Tamil Gaming Guide",
+                "option2": f"I Tried {trend.title()} So You Can Win More",
+                "option3": f"{trend.title()} - Stop Making This Mistake",
+            },
+            "description": (
+                f"In this {lang} gaming video, learn {trend} with practical gameplay examples, "
+                f"mistake breakdowns, and a simple setup you can copy before your next match."
+            ),
+            "tags": [
+                "gaming",
+                "Tamil gaming" if _is_tamil(lang) else "gaming guide",
+                trend,
+                secondary,
+                "gameplay tips",
+                "best settings",
+                "beginner guide",
+                "pro tips",
+                "TubeCoach",
+                "BaiuGPT",
+            ],
+            "thumbnail": f"Gameplay action screenshot, big arrow/circle on the key setting or mistake, text: WIN MORE.",
+            "first_comment": f"Want a full guide on {secondary}? Comment NEXT.",
+            "scripts": {
+                "hook": (
+                    f"இந்த setting/mistake சரி பண்ணினா உங்கள் gameplay உடனே improve ஆகும்."
+                    if _is_tamil(lang) else
+                    "Fix this one setting or mistake and your gameplay will feel better immediately."
+                ),
+                "setup": "First copy these settings, then test them in one match before changing anything else.",
+                "proof": "Here is the exact moment where this helps: aim stays stable, movement is cleaner, and fights are easier to control.",
+                "finish": "Try this in your next match and comment your result. I will make the next guide from your comments.",
+            },
+        }
+
     return {
         "content_type": "review",
         "titles": {
@@ -165,6 +207,10 @@ def _trend_context(niche: str, intent: str = "") -> List[Dict[str, str]]:
     if (
         "tech" in lower_niche
         or "review" in lower_niche
+        or "gaming" in lower_niche
+        or "game" in lower_niche
+        or "gamer" in lower_niche
+        or "esports" in lower_niche
         or "cook" in lower_niche
         or "food" in lower_niche
         or "recipe" in lower_niche
@@ -245,6 +291,7 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
     third = trends[2]["topic"] if len(trends) > 2 else f"{niche} buyer guide"
     pack = _content_pack(niche, primary, secondary, lang)
     is_recipe = pack["content_type"] == "recipe"
+    is_gaming = pack["content_type"] == "gaming"
 
     tasks = [
         {
@@ -254,6 +301,8 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
             "detail": (
                 f"Record a complete recipe video with final dish first, ingredients, cooking checkpoints, and plating."
                 if is_recipe else
+                f"Record gameplay proof, show the exact setting/mistake, then explain how viewers can copy it."
+                if is_gaming else
                 f"Use the trend angle '{primary}' and open with the viewer payoff in {lang}."
             ),
             "time": "2-3 hours",
@@ -268,6 +317,8 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
             "detail": (
                 "Make a 30-45 second Short showing the final dish, 3 fast steps, and one taste/texture close-up."
                 if is_recipe else
+                "Make a 30-45 second Short with one clutch moment, one setting tip, and one result caption."
+                if is_gaming else
                 "Give one clear yes/no verdict, one proof point, and one comment question."
             ),
             "time": "60 min",
@@ -282,6 +333,8 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
             "detail": (
                 "Create 3 title options, a food close-up thumbnail, description, tags, and pinned comment."
                 if is_recipe else
+                "Create a gameplay thumbnail, 3 searchable titles, tags, and a pinned question for the next guide."
+                if is_gaming else
                 "Write 3 titles: best-for-budget, mistake-to-avoid, and honest-verdict."
             ),
             "time": "45 min",
@@ -503,6 +556,62 @@ def generate_task_guide(payload: Dict[str, Any]) -> Dict[str, Any]:
                     "script": pack["scripts"]["finish"],
                     "onScreen": "Final plate close-up, spoon pull/break shot, text overlay with recipe name.",
                     "tip": "Use sensory words like crispy, creamy, spicy, soft, quick, and budget.",
+                },
+            ],
+            "seoContent": {
+                "title": pack["titles"],
+                "description": pack["description"],
+                "tags": pack["tags"],
+                "thumbnailConcept": pack["thumbnail"],
+                "firstComment": pack["first_comment"],
+            },
+            "trends": trends,
+            "sources": _trend_sources(trends),
+        }
+
+    if _is_gaming_niche(niche):
+        return {
+            "totalTime": "2-3 hours",
+            "steps": [
+                {
+                    "stepNum": 1,
+                    "title": "Pick the gameplay proof",
+                    "timestamp": "Planning",
+                    "duration": "20 min",
+                    "what": f"Choose one real match moment that proves '{trend}' helps the viewer play better.",
+                    "script": pack["scripts"]["hook"],
+                    "onScreen": "Show the best clutch, before-after aim/movement, or settings screen in the first 3 seconds.",
+                    "tip": "Gaming viewers need proof fast. Show the result before explaining.",
+                },
+                {
+                    "stepNum": 2,
+                    "title": "Show exact settings or mistake",
+                    "timestamp": "0:00 - 0:30",
+                    "duration": "35 min",
+                    "what": "Display the setting, control, loadout, or mistake clearly so viewers can copy it.",
+                    "script": pack["scripts"]["setup"],
+                    "onScreen": "Use zoom, arrows, and captions for sensitivity, HUD, graphics, or movement details.",
+                    "tip": "Make every number and setting readable on mobile.",
+                },
+                {
+                    "stepNum": 3,
+                    "title": "Break down one fight",
+                    "timestamp": "0:30 - 2:30",
+                    "duration": "70 min",
+                    "what": f"Use one gameplay fight to show why '{trend}' works and where players usually fail.",
+                    "script": pack["scripts"]["proof"],
+                    "onScreen": "Pause at the key moment, circle the enemy/player movement, then replay it at normal speed.",
+                    "tip": "One clear fight breakdown is stronger than five random clips.",
+                },
+                {
+                    "stepNum": 4,
+                    "title": "Package as guide plus Short",
+                    "timestamp": "Upload",
+                    "duration": "40 min",
+                    "what": "Upload the full guide and cut the strongest 20-second proof moment as a Short.",
+                    "script": pack["scripts"]["finish"],
+                    "onScreen": "Thumbnail should show gameplay action, a marked setting/mistake, and 2-3 words.",
+                    "tip": "Use comments to choose the next settings/loadout/challenge video.",
                 },
             ],
             "seoContent": {
