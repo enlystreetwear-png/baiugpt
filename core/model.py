@@ -23,8 +23,8 @@ def _profile_lang(profile: Dict[str, Any], fallback: str = "English") -> str:
 
 
 def _fallback_trends(niche: str) -> List[Dict[str, str]]:
-    lower = niche.lower()
-    if "tech" in lower or "review" in lower:
+    kind = _niche_kind(niche)
+    if kind == "tech":
         topics = [
             "AI smartphone features: useful or gimmick",
             "Best budget phone camera test",
@@ -32,21 +32,53 @@ def _fallback_trends(niche: str) -> List[Dict[str, str]]:
             "Best earbuds for calls, gaming, and battery life",
             "Creator desk gadgets under a budget",
         ]
-    elif "gaming" in lower:
+    elif kind == "gaming":
         topics = [
-            "best sensitivity and HUD settings for beginners",
-            "new season update explained in simple Tamil",
-            "top 5 mistakes that make players lose fights",
-            "budget gaming phone settings for smooth FPS",
-            "one-life challenge gameplay with clutch moments",
+            "BGMI sensitivity settings for stable aim",
+            "Free Fire headshot mistakes to avoid",
+            "GTA roleplay funny mission challenge",
+            "Minecraft survival base in one hour",
+            "budget phone graphics settings for smooth FPS",
         ]
-    elif "cook" in lower or "food" in lower or "recipe" in lower:
+    elif kind == "cooking":
         topics = [
             "5-minute rava upma breakfast",
             "high-protein paneer lunch box",
             "one-pot tomato rice dinner",
             "street-style chilli idli at home",
             "no-oven biscuit pudding",
+        ]
+    elif kind == "fitness":
+        topics = [
+            "10-minute belly fat home workout",
+            "beginner push-up progression",
+            "high-protein vegetarian meal prep",
+            "morning mobility routine for back pain",
+            "fat loss mistakes beginners make",
+        ]
+    elif kind == "education":
+        topics = [
+            "3-hour exam revision plan",
+            "how to remember formulas faster",
+            "common mistakes in board exam answers",
+            "study timetable for working students",
+            "one chapter explained with examples",
+        ]
+    elif kind == "beauty":
+        topics = [
+            "simple daily skincare routine",
+            "budget makeup kit for beginners",
+            "saree styling mistakes to avoid",
+            "frizzy hair routine for humid weather",
+            "office look under 10 minutes",
+        ]
+    elif kind == "finance":
+        topics = [
+            "monthly budget plan for beginners",
+            "SIP investing explained simply",
+            "money mistakes in your 20s",
+            "how to save your first emergency fund",
+            "credit card rules beginners miss",
         ]
     else:
         topics = [
@@ -78,8 +110,36 @@ def _is_gaming_niche(niche: str) -> bool:
     return any(term in niche.lower() for term in ("game", "gaming", "gamer", "esports"))
 
 
+def _niche_kind(niche: str) -> str:
+    lower = niche.lower()
+    if any(term in lower for term in ("cook", "food", "recipe")):
+        return "cooking"
+    if any(term in lower for term in ("game", "gaming", "gamer", "esports")):
+        return "gaming"
+    if any(term in lower for term in ("tech", "review", "gadget", "phone", "laptop")):
+        return "tech"
+    if any(term in lower for term in ("fitness", "workout", "gym", "health", "yoga")):
+        return "fitness"
+    if any(term in lower for term in ("education", "study", "exam", "learn", "teaching")):
+        return "education"
+    if any(term in lower for term in ("beauty", "fashion", "makeup", "skincare", "style")):
+        return "beauty"
+    if any(term in lower for term in ("finance", "money", "invest", "business", "stock")):
+        return "finance"
+    return "general"
+
+
 def _is_tamil(lang: str) -> bool:
     return "tamil" in lang.lower()
+
+
+def _title_case(text: str) -> str:
+    small = {"and", "or", "for", "with", "in", "to", "of", "the", "a", "an"}
+    words = text.split()
+    titled = []
+    for index, word in enumerate(words):
+        titled.append(word if index > 0 and word.lower() in small else word[:1].upper() + word[1:])
+    return " ".join(titled)
 
 
 def _cooking_script_lines(trend: str, lang: str) -> Dict[str, str]:
@@ -107,7 +167,7 @@ def _content_pack(niche: str, trend: str, secondary: str, lang: str) -> Dict[str
             "content_type": "recipe",
             "titles": {
                 "option1": f"{title_topic.title()} | Easy Tamil Home Recipe" if _is_tamil(lang) else f"{title_topic.title()} | Easy Home Recipe",
-                "option2": f"{title_topic.title()} in 10 Minutes | No Complicated Steps",
+                "option2": f"{title_topic.title()} Without Complicated Steps",
                 "option3": f"Quick {title_topic.title()} for Busy Days",
             },
             "description": (
@@ -133,12 +193,13 @@ def _content_pack(niche: str, trend: str, secondary: str, lang: str) -> Dict[str
         }
 
     if _is_gaming_niche(niche):
+        clean_topic = _title_case(trend)
         return {
             "content_type": "gaming",
             "titles": {
-                "option1": f"{trend.title()} | Tamil Gaming Guide",
-                "option2": f"I Tried {trend.title()} So You Can Win More",
-                "option3": f"{trend.title()} - Stop Making This Mistake",
+                "option1": f"{clean_topic} - Full Setup + Live Match Test",
+                "option2": f"I Changed One Setting and My Aim Felt Better",
+                "option3": f"Beginner to Better Aim: Copy This Gameplay Setup",
             },
             "description": (
                 f"In this {lang} gaming video, learn {trend} with practical gameplay examples, "
@@ -170,12 +231,109 @@ def _content_pack(niche: str, trend: str, secondary: str, lang: str) -> Dict[str
             },
         }
 
+    kind = _niche_kind(niche)
+    if kind in {"fitness", "education", "beauty", "finance", "general"}:
+        clean_topic = _title_case(trend)
+        templates = {
+            "fitness": {
+                "content_type": "fitness",
+                "titles": {
+                    "option1": f"{clean_topic} | Beginner-Friendly Routine",
+                    "option2": "I Tried This Simple Routine for 7 Days",
+                    "option3": "Stop Making These Fitness Mistakes",
+                },
+                "description": f"This {lang} fitness video explains {trend} with simple steps, common mistakes, and a repeatable routine for beginners.",
+                "tags": ["fitness", "home workout", "beginner fitness", trend, secondary, "routine", "health", "TubeCoach", "BaiuGPT"],
+                "thumbnail": "Before/after pose or exercise frame, clear body posture, text: START HERE.",
+                "first_comment": f"Do you want a full routine for {secondary}? Comment ROUTINE.",
+                "scripts": {
+                    "hook": "If you are starting fitness, do not begin with a hard routine. Start with this simple method.",
+                    "setup": "First check your form. Quality matters more than speed.",
+                    "proof": "Here is the mistake most beginners make and how to correct it.",
+                    "finish": "Try this for 7 days and comment your result.",
+                },
+            },
+            "education": {
+                "content_type": "education",
+                "titles": {
+                    "option1": f"{clean_topic} Explained Simply",
+                    "option2": "Learn This Topic in 10 Minutes",
+                    "option3": "Most Students Make This Mistake",
+                },
+                "description": f"This {lang} education video teaches {trend} with examples, memory tricks, and common exam mistakes.",
+                "tags": ["study tips", "education", "exam preparation", trend, secondary, "learning", "student tips", "TubeCoach", "BaiuGPT"],
+                "thumbnail": "Notebook or board with one big question, text: EASY METHOD.",
+                "first_comment": f"Which chapter should I explain next: {secondary}?",
+                "scripts": {
+                    "hook": "If this topic feels confusing, I will make it simple in the next few minutes.",
+                    "setup": "First understand this one rule. Everything else connects to it.",
+                    "proof": "Here is an example and the common mistake students make.",
+                    "finish": "Save this and try the practice question in the comments.",
+                },
+            },
+            "beauty": {
+                "content_type": "beauty",
+                "titles": {
+                    "option1": f"{clean_topic} | Simple Beginner Guide",
+                    "option2": "Affordable Routine That Actually Looks Good",
+                    "option3": "Avoid These Style Mistakes",
+                },
+                "description": f"This {lang} beauty/fashion video shows {trend} with affordable products, step-by-step application, and mistakes to avoid.",
+                "tags": ["beauty", "fashion", "skincare", "makeup", trend, secondary, "beginner guide", "TubeCoach", "BaiuGPT"],
+                "thumbnail": "Before/after face or outfit, clean lighting, text: EASY LOOK.",
+                "first_comment": f"Should I do {secondary} next? Comment LOOK.",
+                "scripts": {
+                    "hook": "This is the easiest way to get a clean look without overcomplicating it.",
+                    "setup": "Start with this base step because it changes the final result.",
+                    "proof": "Here is the before and after so you can see the difference.",
+                    "finish": "Save this look and comment what style you want next.",
+                },
+            },
+            "finance": {
+                "content_type": "finance",
+                "titles": {
+                    "option1": f"{clean_topic} - Simple Money Guide",
+                    "option2": "Money Mistake You Should Avoid",
+                    "option3": "Start Managing Money With This Simple Plan",
+                },
+                "description": f"This {lang} finance video explains {trend} in simple language with examples, action steps, and mistakes to avoid.",
+                "tags": ["personal finance", "money tips", "beginner finance", trend, secondary, "saving money", "investing basics", "TubeCoach", "BaiuGPT"],
+                "thumbnail": "Simple money chart or calculator, big number, text: START NOW.",
+                "first_comment": f"Want a simple example for {secondary}? Comment MONEY.",
+                "scripts": {
+                    "hook": "Most beginners lose money because they skip this basic rule.",
+                    "setup": "First understand the simple version before you take action.",
+                    "proof": "Here is a real example with numbers so it is easy to follow.",
+                    "finish": "Save this and comment your next money question.",
+                },
+            },
+            "general": {
+                "content_type": "general",
+                "titles": {
+                    "option1": f"{clean_topic} | Step-by-Step Guide",
+                    "option2": "Beginner Mistakes You Should Avoid",
+                    "option3": "Simple Method That Actually Works",
+                },
+                "description": f"This {lang} video explains {trend} with a simple step-by-step process, examples, and clear next actions.",
+                "tags": ["how to", "beginner guide", niche, trend, secondary, "tips", "TubeCoach", "BaiuGPT"],
+                "thumbnail": "Clear before/after or result image, text: EASY STEPS.",
+                "first_comment": f"What should I cover next: {secondary}?",
+                "scripts": {
+                    "hook": "If you are confused about this, follow these simple steps.",
+                    "setup": "Start with the most important step first.",
+                    "proof": "Here is an example so you can copy it easily.",
+                    "finish": "Try this and comment what you want next.",
+                },
+            },
+        }
+        return templates[kind]
+
     return {
         "content_type": "review",
         "titles": {
-            "option1": f"{trend}: Worth It or Overhyped?",
-            "option2": f"Before You Choose {trend}, Watch This",
-            "option3": f"{trend} vs {secondary}: Honest Verdict",
+            "option1": f"{_title_case(trend)} - Honest Verdict",
+            "option2": "I Tested the Feature Viewers Actually Care About",
+            "option3": "Before You Upgrade, Check These 3 Things",
         },
         "description": (
             f"In this {lang} {niche} video, we look at {trend}, compare it with {secondary}, "
@@ -214,6 +372,14 @@ def _trend_context(niche: str, intent: str = "") -> List[Dict[str, str]]:
         or "cook" in lower_niche
         or "food" in lower_niche
         or "recipe" in lower_niche
+        or "fitness" in lower_niche
+        or "workout" in lower_niche
+        or "education" in lower_niche
+        or "study" in lower_niche
+        or "beauty" in lower_niche
+        or "fashion" in lower_niche
+        or "finance" in lower_niche
+        or "money" in lower_niche
     ):
         return _fallback_trends(niche)
 
@@ -276,6 +442,147 @@ def _trend_sources(trends: List[Dict[str, str]]) -> List[Dict[str, str]]:
         if item.get("url")
     ]
 
+
+def _weekly_task_copy(content_type: str, primary: str, secondary: str, third: str, lang: str) -> Dict[str, Dict[str, str]]:
+    copy = {
+        "recipe": {
+            "video": "Record a complete recipe video with final dish first, ingredients, cooking checkpoints, and plating.",
+            "short": "Make a 30-45 second Short showing the final dish, 3 fast steps, and one taste/texture close-up.",
+            "seo": "Create 3 title options, a food close-up thumbnail, description, tags, and pinned comment.",
+        },
+        "gaming": {
+            "video": "Record gameplay proof, show the exact setting/mistake, then explain how viewers can copy it.",
+            "short": "Make a 30-45 second Short with one clutch moment, one setting tip, and one result caption.",
+            "seo": "Create a gameplay thumbnail, 3 searchable titles, tags, and a pinned question for the next guide.",
+        },
+        "fitness": {
+            "video": "Film the routine with form checks, beginner mistakes, and a simple 7-day progression.",
+            "short": "Make a quick form-fix Short with one mistake, one correction, and one visible result.",
+            "seo": "Write titles around routine, mistake, and beginner result; use a posture-focused thumbnail.",
+        },
+        "education": {
+            "video": "Teach the topic with one rule, two examples, and one practice question viewers can answer.",
+            "short": "Make a 30-second memory trick or exam mistake Short with a clear answer reveal.",
+            "seo": "Write titles around explained simply, exam mistake, and fast revision; use a board/notebook thumbnail.",
+        },
+        "beauty": {
+            "video": "Show the before, step-by-step application or styling, mistakes to avoid, and final look.",
+            "short": "Make a before-after Short with one product/step, one mistake, and the finished look.",
+            "seo": "Write titles around beginner guide, affordable routine, and mistake fix; use a clean before-after thumbnail.",
+        },
+        "finance": {
+            "video": "Explain the money topic with one simple example, numbers on screen, and one action step.",
+            "short": "Make a 30-second money mistake Short with one number, one rule, and one next action.",
+            "seo": "Write titles around explained simply, money mistake, and starter plan; use a clean number-based thumbnail.",
+        },
+        "review": {
+            "video": f"Use the trend angle '{primary}' and open with the viewer payoff in {lang}.",
+            "short": "Give one clear yes/no verdict, one proof point, and one comment question.",
+            "seo": "Write 3 titles: best-for-budget, mistake-to-avoid, and honest-verdict.",
+        },
+        "general": {
+            "video": "Create a step-by-step video with one clear result, proof example, and viewer action.",
+            "short": "Make a quick result-first Short with one tip, one example, and one question.",
+            "seo": "Write titles around step-by-step guide, beginner mistake, and simple method.",
+        },
+    }
+    return copy.get(content_type, copy["general"])
+
+
+def _task_guide_steps(content_type: str, title: str, trend: str, secondary: str, lang: str, pack: Dict[str, Any]) -> List[Dict[str, Any]]:
+    scripts = pack["scripts"]
+    if content_type == "review":
+        return [
+            {
+                "stepNum": 1,
+                "title": "Choose the viewer decision",
+                "timestamp": "Planning",
+                "duration": "20 min",
+                "what": f"Connect '{title}' to the current review angle '{trend}' and decide the one question viewers need answered.",
+                "script": f"Today I am testing {trend} so you can decide faster.",
+                "onScreen": "Show the product, result, price/value point, or comparison table immediately.",
+                "tip": "A review works best when viewers know a clear decision is coming.",
+            },
+            {
+                "stepNum": 2,
+                "title": "Open with the verdict",
+                "timestamp": "0:00 - 0:15",
+                "duration": "30 min",
+                "what": "Say the verdict first, then tease the proof.",
+                "script": scripts["hook"],
+                "onScreen": "Show a before-after, side-by-side comparison, or result card.",
+                "tip": "Do not hide the answer too long. Use the video to prove it.",
+            },
+            {
+                "stepNum": 3,
+                "title": "Prove with three tests",
+                "timestamp": "0:15 - 3:00",
+                "duration": "90 min",
+                "what": f"Compare '{trend}' against '{secondary}' using 3 viewer-first criteria.",
+                "script": scripts["ingredients"],
+                "onScreen": "Use score cards, close-ups, screen recordings, or quick captions for each criterion.",
+                "tip": "Make each test visible so the verdict feels earned.",
+            },
+            {
+                "stepNum": 4,
+                "title": "Package the verdict",
+                "timestamp": "Upload",
+                "duration": "45 min",
+                "what": "Create one title for search and one thumbnail for curiosity.",
+                "script": scripts["finish"],
+                "onScreen": "Thumbnail: main object/result, one verdict word, high contrast.",
+                "tip": "Use the trend phrase in the title, but keep the thumbnail simple.",
+            },
+        ]
+
+    guide_map = {
+        "fitness": {
+            "step1": ("Choose the visible result", f"Turn '{trend}' into one beginner-safe result: better form, more consistency, or a simple 7-day routine.", "Show the exercise result or form correction first.", "People trust fitness videos when the movement looks clear and achievable."),
+            "step2": ("Teach the setup", "Explain starting position, reps/time, rest, and the easiest beginner version.", "Use full-body framing, rep counter, and form arrows.", "Good form beats intensity for beginner content."),
+            "step3": ("Correct the mistake", f"Show the most common mistake for '{trend}' and the exact correction.", "Split screen: wrong form vs correct form.", "One form correction can become a strong Short."),
+            "step4": ("Finish with progression", "Give viewers a simple 7-day plan and ask them to report results.", "Show day-by-day checklist and final posture/result.", "Make the next action small enough to start today."),
+        },
+        "education": {
+            "step1": ("Pick one learning promise", f"Turn '{trend}' into one clear lesson promise: understand, remember, solve, or revise.", "Show the final solved example or exam-style question first.", "Students stay when they know what they will be able to do by the end."),
+            "step2": ("Explain the core rule", "Teach the one rule or idea that unlocks the topic.", "Board/notebook view with one highlighted formula or rule.", "Keep the first explanation simple before adding exceptions."),
+            "step3": ("Work through examples", f"Use two examples for '{trend}': one easy and one exam-style.", "Write each step clearly and pause on the answer.", "Examples make education content feel useful, not theoretical."),
+            "step4": ("Add practice and recap", "End with a practice question, answer hint, and short recap.", "Show question on screen and ask viewers to comment the answer.", "A comment question gives you the next video idea."),
+        },
+        "beauty": {
+            "step1": ("Show the before-after promise", f"Make '{trend}' visual immediately with a before shot and the final look.", "Show the final face/outfit/hair result in the first seconds.", "Beauty content needs the result on screen fast."),
+            "step2": ("Build the base", "Show the first product, prep step, or styling choice that affects the final result most.", "Clean close-ups, product names, and shade/step captions.", "Keep lighting consistent so the change is believable."),
+            "step3": ("Fix the common mistake", f"Show the mistake beginners make with '{trend}' and the cleaner alternative.", "Side-by-side mistake vs corrected step.", "Mistake content is highly saveable when the fix is simple."),
+            "step4": ("Finish the look", "Reveal the final result and give one affordable swap or routine tip.", "Final before-after, product/routine list, and comment question.", "Ask viewers what look or product they want tested next."),
+        },
+        "finance": {
+            "step1": ("Choose the money problem", f"Turn '{trend}' into one practical problem: save, invest, budget, avoid debt, or understand risk.", "Show the key number or result first.", "Finance content works when the viewer sees a concrete number."),
+            "step2": ("Explain the simple rule", "Break the topic into one rule with plain language.", "Use a clean table, calculator, or simple chart.", "Avoid jargon until the basic idea is clear."),
+            "step3": ("Show a real example", f"Use a realistic example for '{trend}' with numbers viewers can copy.", "Show income/expense/investment numbers step by step.", "Numbers make advice feel practical and trustworthy."),
+            "step4": ("Give the next action", "End with one safe next step and one mistake to avoid.", "Checklist: do this today, avoid this, ask this next.", "Do not overpromise returns. Keep the advice practical."),
+        },
+        "general": {
+            "step1": ("Choose the clear result", f"Turn '{trend}' into one result viewers can understand immediately.", "Show the final result or strongest example first.", "One clear promise beats a broad topic."),
+            "step2": ("Show the simple setup", "Explain what viewers need before they start.", "Show tools, checklist, or first step on screen.", "Remove anything that does not support the promise."),
+            "step3": ("Prove the method", "Walk through the method with one concrete example.", "Use captions for each step and show progress.", "A visible example makes the guide easier to follow."),
+            "step4": ("Package the next action", "End with a recap, title promise, and comment question.", "Show final result plus the next action.", "Use comments to choose the next guide."),
+        },
+    }
+    guide = guide_map.get(content_type, guide_map["general"])
+    script_keys = ["hook", "setup", "proof", "finish"]
+    return [
+        {
+            "stepNum": index + 1,
+            "title": guide[f"step{index + 1}"][0],
+            "timestamp": ["Planning", "0:00 - 0:20", "0:20 - 2:30", "Upload"][index],
+            "duration": ["20 min", "30 min", "75 min", "40 min"][index],
+            "what": guide[f"step{index + 1}"][1],
+            "script": scripts[script_keys[index]],
+            "onScreen": guide[f"step{index + 1}"][2],
+            "tip": guide[f"step{index + 1}"][3],
+        }
+        for index in range(4)
+    ]
+
 # -------------------------
 # Weekly Plan
 # -------------------------
@@ -290,21 +597,15 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
     secondary = trends[1]["topic"] if len(trends) > 1 else f"{niche} comparison"
     third = trends[2]["topic"] if len(trends) > 2 else f"{niche} buyer guide"
     pack = _content_pack(niche, primary, secondary, lang)
-    is_recipe = pack["content_type"] == "recipe"
-    is_gaming = pack["content_type"] == "gaming"
+    content_type = pack["content_type"]
+    task_copy = _weekly_task_copy(content_type, primary, secondary, third, lang)
 
     tasks = [
         {
             "id": "idea-1",
             "type": "video",
             "title": f"Create: {primary}",
-            "detail": (
-                f"Record a complete recipe video with final dish first, ingredients, cooking checkpoints, and plating."
-                if is_recipe else
-                f"Record gameplay proof, show the exact setting/mistake, then explain how viewers can copy it."
-                if is_gaming else
-                f"Use the trend angle '{primary}' and open with the viewer payoff in {lang}."
-            ),
+            "detail": task_copy["video"],
             "time": "2-3 hours",
             "priority": "high",
             "isIdea": True,
@@ -314,13 +615,7 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
             "id": "short-1",
             "type": "short",
             "title": f"Short: {secondary}",
-            "detail": (
-                "Make a 30-45 second Short showing the final dish, 3 fast steps, and one taste/texture close-up."
-                if is_recipe else
-                "Make a 30-45 second Short with one clutch moment, one setting tip, and one result caption."
-                if is_gaming else
-                "Give one clear yes/no verdict, one proof point, and one comment question."
-            ),
+            "detail": task_copy["short"],
             "time": "60 min",
             "priority": "high",
             "isIdea": True,
@@ -330,13 +625,7 @@ def generate_weekly_plan(payload: Dict[str, Any]) -> Dict[str, Any]:
             "id": "thumb-1",
             "type": "seo",
             "title": f"Package: {third}",
-            "detail": (
-                "Create 3 title options, a food close-up thumbnail, description, tags, and pinned comment."
-                if is_recipe else
-                "Create a gameplay thumbnail, 3 searchable titles, tags, and a pinned question for the next guide."
-                if is_gaming else
-                "Write 3 titles: best-for-budget, mistake-to-avoid, and honest-verdict."
-            ),
+            "detail": task_copy["seo"],
             "time": "45 min",
             "priority": "medium",
             "trendReason": trends[2].get("snippet") if len(trends) > 2 else "",
@@ -626,49 +915,8 @@ def generate_task_guide(payload: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     return {
-        "totalTime": "3-4 hours",
-        "steps": [
-            {
-                "stepNum": 1,
-                "title": "Choose the trend angle",
-                "timestamp": "Planning",
-                "duration": "20 min",
-                "what": f"Connect '{title}' to the current trend angle '{trend}'.",
-                "script": f"Today I am testing whether {trend} is actually worth your attention.",
-                "onScreen": "Show the product, result, or comparison table immediately.",
-                "tip": "A specific trend angle makes the video feel current and clickable.",
-            },
-            {
-                "stepNum": 2,
-                "title": "Build the hook",
-                "timestamp": "0:00 - 0:15",
-                "duration": "30 min",
-                "what": "Open with the verdict, then tease the proof.",
-                "script": f"Before you buy, try, or skip this, here are the 3 things that matter most in {lang}.",
-                "onScreen": "Show a quick before-after, price/value card, or side-by-side comparison.",
-                "tip": "For reviews, viewers stay when they know a decision is coming.",
-            },
-            {
-                "stepNum": 3,
-                "title": "Prove the verdict",
-                "timestamp": "0:15 - 3:00",
-                "duration": "90 min",
-                "what": f"Compare '{trend}' against '{secondary}' using 3 viewer-first criteria.",
-                "script": "Point one is value. Point two is real-world use. Point three is who should avoid it.",
-                "onScreen": "Use score cards, close-ups, and quick captions for each criterion.",
-                "tip": "Keep cuts tight and reset attention every 20 to 30 seconds.",
-            },
-            {
-                "stepNum": 4,
-                "title": "Package for trend discovery",
-                "timestamp": "Upload",
-                "duration": "45 min",
-                "what": "Create one title for search and one thumbnail for curiosity.",
-                "script": "The title should promise the decision. The thumbnail should show the conflict.",
-                "onScreen": "Thumbnail: product/result on one side, verdict word on the other.",
-                "tip": "Use the trend phrase in the title but keep the thumbnail simple.",
-            },
-        ],
+        "totalTime": "3-4 hours" if pack["content_type"] == "review" else "2-3 hours",
+        "steps": _task_guide_steps(pack["content_type"], title, trend, secondary, lang, pack),
         "seoContent": {
             "title": pack["titles"],
             "description": pack["description"],
