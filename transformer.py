@@ -66,19 +66,25 @@ learning_rate = 3e-4
 # BATCHING
 # =====================================
 def get_batch():
+    if data is None or len(data) < 3:
+        raise RuntimeError("Not enough training tokens. Add more examples, then run native tokenization again.")
+
+    seq_len = min(block_size, len(data) - 2)
+    max_start = len(data) - seq_len - 1
+    actual_batch_size = min(batch_size, max(1, max_start))
 
     ix = torch.randint(
-        len(data) - block_size - 1,
-        (batch_size,)
+        max_start,
+        (actual_batch_size,)
     )
 
     x = torch.stack([
-        data[i:i + block_size]
+        data[i:i + seq_len]
         for i in ix
     ])
 
     y = torch.stack([
-        data[i + 1:i + block_size + 1]
+        data[i + 1:i + seq_len + 1]
         for i in ix
     ])
 
@@ -338,9 +344,11 @@ def generate(
 
         logits = logits / temperature
 
+        safe_top_k = min(top_k, logits.shape[-1])
+
         topk_logits, topk_idx = torch.topk(
             logits,
-            top_k
+            safe_top_k
         )
 
         probs = F.softmax(
@@ -378,6 +386,15 @@ def train_model(total_steps=20000):
 
         print("No training data found")
         return
+
+    if len(data) < 3:
+        print("Not enough training tokens. Save more feedback examples first.")
+        return
+
+    seq_len = min(block_size, len(data) - 2)
+    print(f"Training with sequence length: {seq_len}")
+    if len(data) < block_size + 2:
+        print("Small dataset detected. Training will work, but output quality needs more feedback examples.")
 
     model.train()
 
