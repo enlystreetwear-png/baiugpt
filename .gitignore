@@ -8,6 +8,9 @@ venv/
 # Local training and generated artifacts are not needed by the FastAPI provider.
 curl-8.20.0_2-win64-mingw/
 datasets/tokens/
+datasets/native_tubecoach.txt
+data/native_memory.jsonl
+data/tubecoach_training.jsonl
 logs/
 models/
 rag_db/

@@ -4,6 +4,13 @@ from fastapi import FastAPI, Header, HTTPException
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from native.memory import remember_feedback
+from native.reasoner import (
+    native_answer,
+    native_status,
+    refine_task_guide,
+    refine_weekly_plan,
+)
 
 # Import AI functions from core.model
 from core.model import (
@@ -60,6 +67,20 @@ class TaskGuideRequest(BaseModel):
     channel: Optional[Dict[str, Any]] = {}
     profile: Optional[Dict[str, Any]] = {}
 
+class NativeGenerateRequest(BaseModel):
+    prompt: str
+    niche: Optional[str] = "content creation"
+    lang: Optional[str] = "English"
+
+class NativeFeedbackRequest(BaseModel):
+    niche: Optional[str] = ""
+    lang: Optional[str] = ""
+    rating: Optional[int] = None
+    question: Optional[str] = ""
+    badOutput: Optional[Any] = None
+    betterOutput: Optional[Any] = None
+    notes: Optional[str] = ""
+
 # -------------------------
 # FastAPI Setup
 # -------------------------
@@ -81,6 +102,11 @@ app.add_middleware(
 def health():
     return {"status": "ok", "name": "BaiuGPT"}
 
+@app.get("/native/status")
+def native_status_route(x_api_key: str = Header(...)):
+    validate_api_key(x_api_key)
+    return native_status()
+
 # -------------------------
 # Weekly Plan Endpoint
 # -------------------------
@@ -88,7 +114,8 @@ def health():
 def weekly_plan(request: WeeklyPlanRequest, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
     try:
-        return generate_weekly_plan(request.dict())
+        payload = request.dict()
+        return refine_weekly_plan(payload, generate_weekly_plan(payload))
     except Exception as e:
         return {"error": str(e)}
 
@@ -134,6 +161,22 @@ def ai_coach(request: CoachRequest, x_api_key: str = Header(...)):
     except Exception as e:
         return {"error": str(e)}
 
+@app.post("/ai/native-generate")
+def native_generate(request: NativeGenerateRequest, x_api_key: str = Header(...)):
+    validate_api_key(x_api_key)
+    try:
+        return native_answer(request.prompt, niche=request.niche or "content creation", lang=request.lang or "English")
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/ai/native-feedback")
+def native_feedback(request: NativeFeedbackRequest, x_api_key: str = Header(...)):
+    validate_api_key(x_api_key)
+    try:
+        return remember_feedback(request.dict())
+    except Exception as e:
+        return {"error": str(e)}
+
 # -------------------------
 # Goal Roadmap Endpoint
 # -------------------------
@@ -152,6 +195,7 @@ def goal_roadmap(request: GoalRoadmapRequest, x_api_key: str = Header(...)):
 def task_guide(request: TaskGuideRequest, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
     try:
-        return generate_task_guide(request.dict())
+        payload = request.dict()
+        return refine_task_guide(payload, generate_task_guide(payload))
     except Exception as e:
         return {"error": str(e)}
