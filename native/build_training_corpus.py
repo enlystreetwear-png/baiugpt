@@ -5,6 +5,7 @@ from native.config import NATIVE_TRAINING_PATH, PROJECT_ROOT, ensure_native_dirs
 
 
 CORPUS_PATH = PROJECT_ROOT / "datasets" / "native_tubecoach.txt"
+SOURCE_SITES_PATH = PROJECT_ROOT / "native" / "source_sites.json"
 
 
 SEED_EXAMPLES = [
@@ -175,6 +176,39 @@ def format_example(row):
     )
 
 
+def load_source_sites():
+    if not SOURCE_SITES_PATH.exists():
+        return []
+    with open(SOURCE_SITES_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def source_routing_examples():
+    examples = []
+    sites = load_source_sites()
+    for site in sites:
+        examples.append({
+            "input": {
+                "niche": "TubeCoach research",
+                "lang": "English",
+                "question": f"When should BaiuGPT use {site['name']}?",
+                "notes": "Choose the best online source for accurate creator advice without copying full website text.",
+                "badOutput": "Use random web results and copy long text.",
+            },
+            "target": {
+                "source": site["name"],
+                "url": site["url"],
+                "bestFor": site["useFor"],
+                "safeUse": site["storePolicy"],
+                "answerRule": (
+                    f"Use {site['name']} for {', '.join(site['useFor'][:3])}. "
+                    "Store only short notes, facts, URLs, and user-approved examples."
+                ),
+            },
+        })
+    return examples
+
+
 def main():
     ensure_native_dirs()
     CORPUS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -191,7 +225,7 @@ def main():
                 except Exception:
                     continue
 
-    rows = SEED_EXAMPLES + rows
+    rows = SEED_EXAMPLES + source_routing_examples() + rows
     while len(rows) < 32:
         rows = rows + rows
 

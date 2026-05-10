@@ -1,0 +1,63 @@
+[
+  {
+    "name": "YouTube Creators",
+    "url": "https://www.youtube.com/creators/",
+    "useFor": ["youtube strategy", "retention", "titles", "thumbnails", "channel growth"],
+    "storePolicy": "Store short notes and source URL only. Do not copy full pages."
+  },
+  {
+    "name": "YouTube Studio Inspiration",
+    "url": "https://support.google.com/youtube/answer/15575509",
+    "useFor": ["video ideas", "titles", "outlines", "thumbnail brainstorming", "audience fit"],
+    "storePolicy": "Store idea patterns and user-approved examples only."
+  },
+  {
+    "name": "YouTube Studio Analytics Help",
+    "url": "https://support.google.com/youtubecreatorstudio/answer/12220281",
+    "useFor": ["analytics", "CTR", "retention", "reach", "engagement"],
+    "storePolicy": "Store metric definitions and decision rules only."
+  },
+  {
+    "name": "Google Trends",
+    "url": "https://trends.google.com/trends/",
+    "useFor": ["search demand", "rising topics", "seasonality", "regional interest"],
+    "storePolicy": "Store trend query, score, region, date, and short summary."
+  },
+  {
+    "name": "TikTok Creative Center Trends",
+    "url": "https://ads.tiktok.com/business/creativecenter/",
+    "useFor": ["short-form trends", "hashtags", "songs", "creator patterns", "viral hooks"],
+    "storePolicy": "Store trend labels, region, industry, and short observation."
+  },
+  {
+    "name": "Reddit",
+    "url": "https://www.reddit.com/",
+    "useFor": ["audience pain points", "questions", "buyer doubts", "community language"],
+    "storePolicy": "Store short paraphrased insight and thread URL. Avoid private/personal data."
+  },
+  {
+    "name": "Product Hunt",
+    "url": "https://www.producthunt.com/",
+    "useFor": ["new apps", "AI tools", "tech launches", "creator tools"],
+    "storePolicy": "Store product name, launch angle, category, and URL."
+  },
+  {
+    "name": "GSMArena",
+    "url": "https://www.gsmarena.com/",
+    "useFor": ["phone specs", "smartphone launches", "camera/battery/spec comparison"],
+    "storePolicy": "Store factual specs, model names, and URL. Do not copy reviews."
+  },
+  {
+    "name": "Hugging Face Datasets",
+    "url": "https://huggingface.co/datasets",
+    "useFor": ["open datasets", "instruction examples", "reasoning data", "benchmark data"],
+    "storePolicy": "Use only datasets with compatible licenses. Store dataset name, license, and examples allowed by license."
+  },
+  {
+    "name": "Kaggle Datasets",
+    "url": "https://www.kaggle.com/datasets",
+    "useFor": ["open CSV datasets", "analytics examples", "niche data", "training material"],
+    "storePolicy": "Use only datasets with compatible licenses. Store dataset name, license, and examples allowed by license."
+  }
+]
+

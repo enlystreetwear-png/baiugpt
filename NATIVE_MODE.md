@@ -48,6 +48,14 @@ data/tubecoach_training.jsonl
 
 ## Train BaiuGPT Weights Locally
 
+The native dataset uses curated online source signals from:
+
+```text
+native/source_sites.json
+```
+
+These sources are used for short notes, factual signals, URLs, and source-routing examples. Do not copy full copyrighted pages into the training set.
+
 Build a text corpus from saved examples:
 
 ```powershell
@@ -73,4 +81,3 @@ The model will use CUDA if PyTorch is installed with NVIDIA support.
 ## Recommended Next Step
 
 The current native mode gives BaiuGPT local reasoning, feedback memory, and a training path. The next upgrade is to connect `models/baiugpt.pt` directly into `/ai/native-generate` after enough examples are collected.
-
