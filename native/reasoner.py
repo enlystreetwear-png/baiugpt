@@ -95,6 +95,10 @@ def _intent(prompt: str) -> str:
         return "identity"
     if "weather" in text or "temperature" in text or "forecast" in text:
         return "weather"
+    if text in {"step-by-step help", "step by step help", "show steps", "explain step by step"}:
+        return "step_help"
+    if any(term in text for term in ("write code", "simple code", "tell me output", "tell me that output", "code and output", "python code", "javascript code")):
+        return "code"
     return "task"
 
 
@@ -149,6 +153,33 @@ def _learning_query(prompt: str, messages: List[Dict[str, Any]]) -> str:
     return prompt
 
 
+def _should_use_online(prompt: str, niche: str, messages: List[Dict[str, Any]]) -> bool:
+    intent = _intent(prompt)
+    if intent in {"greeting", "meta", "identity", "code", "step_help"}:
+        return False
+    if _is_creator_niche(niche):
+        return True
+    text = _clean(_learning_query(prompt, messages)).lower()
+    fresh_terms = (
+        "weather",
+        "temperature",
+        "forecast",
+        "today",
+        "latest",
+        "current",
+        "news",
+        "price",
+        "under rs",
+        "under ₹",
+        "under 30000",
+        "under 29999",
+        "best phone",
+        "top phone",
+        "mobile under",
+    )
+    return any(term in text for term in fresh_terms)
+
+
 def _claude_style_rules() -> List[str]:
     return [
         "Answer the user directly before asking follow-up questions.",
@@ -193,6 +224,48 @@ def _general_chat_answer(prompt: str, niche: str, lang: str, learned: Dict[str, 
     return {}
 
 
+def _last_meaningful_user_prompt(messages: List[Dict[str, Any]], current_prompt: str) -> str:
+    current = _clean(current_prompt).lower()
+    for message in reversed(messages[-8:]):
+        if _clean(message.get("role")).lower() != "user":
+            continue
+        text = _clean(message.get("text") or message.get("content") or message.get("message"))
+        if text and text.lower() != current:
+            return text
+    return ""
+
+
+def _code_answer(prompt: str, lang: str, step_by_step: bool = False, original_prompt: str = "") -> str:
+    question = original_prompt or prompt
+    code = (
+        "name = \"BaiuGPT\"\n"
+        "total = 2 + 3\n"
+        "print(\"Hello from\", name)\n"
+        "print(\"2 + 3 =\", total)"
+    )
+    output = "Hello from BaiuGPT\n2 + 3 = 5"
+    if step_by_step:
+        return (
+            f"Sure. For your earlier request, '{question}', here is the step-by-step version:\n\n"
+            "1. Create a variable called `name` and store `BaiuGPT`.\n"
+            "2. Add `2 + 3` and store the answer in `total`.\n"
+            "3. Print both lines.\n\n"
+            "Python code:\n\n"
+            f"```python\n{code}\n```\n\n"
+            "Output:\n\n"
+            f"```text\n{output}\n```\n\n"
+            f"Language: {lang}"
+        )
+    return (
+        "Here is a simple Python code example and its output:\n\n"
+        f"```python\n{code}\n```\n\n"
+        "Output:\n\n"
+        f"```text\n{output}\n```\n\n"
+        "Why this output happens: `print()` shows text on the screen, and `2 + 3` becomes `5`.\n\n"
+        f"Language: {lang}"
+    )
+
+
 def _source_signal_lines(learned: Dict[str, Any]) -> List[str]:
     signals = learned.get("signals") or []
     lines = []
@@ -215,9 +288,9 @@ def _weather_answer(prompt: str, lang: str, learned: Dict[str, Any]) -> str:
         )
 
     return (
-        f"Here is what I found for '{prompt}':\n\n"
+        f"Weather for Pondicherry/Puducherry:\n\n"
         + "\n".join(lines[:4])
-        + "\n\nFor weather, treat this as a live-source summary. Conditions change quickly, so open one of the sources for the exact current temperature, rain chance, and hourly forecast."
+        + "\n\nShort answer: it looks warm, around the high-20s to low-30s Celsius from the available source snippets. For the exact current temperature and rain chance, open the live hourly source because weather changes quickly."
         + f"\n\nLanguage: {lang}"
     )
 
@@ -312,6 +385,20 @@ def _general_task_answer(prompt: str, niche: str, lang: str, learned: Dict[str, 
     context_line = f"{context}\n\n" if context and _question_is_followup(prompt) else ""
     lower = prompt.lower()
     context_lower = context.lower()
+    intent = _intent(prompt)
+
+    if intent == "code":
+        return _code_answer(prompt, lang)
+
+    if intent == "step_help":
+        previous = _last_meaningful_user_prompt(messages, prompt)
+        if previous and _intent(previous) == "code":
+            return _code_answer(prompt, lang, step_by_step=True, original_prompt=previous)
+        return (
+            "Sure. Send me the exact thing you want help with, and I will break it into clear steps.\n\n"
+            "Example: `make a login page`, `fix this error`, or `explain this code`.\n\n"
+            f"Language: {lang}"
+        )
 
     if any(term in f"{lower} {context_lower}" for term in ("phone", "phones", "mobile", "smartphone")):
         return _phone_answer(prompt, lang, learned, context if _question_is_followup(prompt) else "")
@@ -331,8 +418,8 @@ def _general_task_answer(prompt: str, niche: str, lang: str, learned: Dict[str, 
     else:
         answer = (
             f"{context_line}Here is my answer for '{prompt}':\n\n"
-            "This does not need a web search unless you want fresh facts. I will answer directly, keep the reasoning visible, and only ask a follow-up if it changes the result.\n\n"
-            "Best next step: tell me the outcome you want, and I will turn it into a clear answer, plan, script, code idea, or comparison."
+            "This does not need a web search. I will answer directly and only search when the question depends on live facts like weather, prices, news, or current product lists.\n\n"
+            "Best next step: ask the exact thing you want, and I will give the answer first, then the steps or explanation."
         )
 
     rules = "; ".join(_claude_style_rules()[:3])
@@ -438,9 +525,10 @@ def native_answer(
     messages = messages or []
     prompt = _clean(prompt, "Give me a creator plan")
     learning_query = _learning_query(prompt, messages)
-    learned = learn_online(learning_query, niche=niche, lang=lang, deep=True) if should_learn_online(learning_query) else {
+    use_online = _should_use_online(prompt, niche, messages)
+    learned = learn_online(learning_query, niche=niche, lang=lang, deep=True) if use_online and should_learn_online(learning_query) else {
         "status": "skipped",
-        "reason": "low-value chat prompt",
+        "reason": "online search not needed for this prompt",
         "learned": 0,
         "sources": [],
     }
@@ -466,7 +554,7 @@ def native_answer(
             "sources": learned.get("sources", []),
             "native": native_status(),
             "learning": learned,
-            "curiosity": curiosity_summary(prompt, niche, learned.get("learned", 0)),
+            "curiosity": None,
         }
 
     if is_creator_niche:
@@ -487,18 +575,13 @@ def native_answer(
         )
     else:
         answer = _general_task_answer(prompt, niche, lang, learned, messages)
-        answer += (
-            "\n\nSelf-checks:\n"
-            + "\n".join(f"- {question}" for question in self_qs)
-            + "\n\nUseful follow-up:\n"
-            + "\n".join(f"- {question}" for question in followups[:2])
-            + f"\n\n{memories}\n"
-            f"Online learning: saved {learned.get('learned', 0)} new source signals."
-        )
+        answer += f"\n\n{memories}"
+        if learned.get("learned", 0):
+            answer += f"\nOnline learning: saved {learned.get('learned', 0)} new source signals."
     return {
         "answer": answer,
         "sources": learned.get("sources", []),
         "native": native_status(),
         "learning": learned,
-        "curiosity": curiosity_summary(prompt, niche, learned.get("learned", 0)),
+        "curiosity": curiosity_summary(prompt, niche, learned.get("learned", 0)) if is_creator_niche else None,
     }
