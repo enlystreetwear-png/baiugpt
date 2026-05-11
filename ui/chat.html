@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BaiuGPT Native Chat</title>
+  <link rel="stylesheet" href="/ui/chat.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="topbar" aria-label="BaiuGPT status">
+      <div>
+        <h1>BaiuGPT</h1>
+        <p>Native local chat running on your PC</p>
+      </div>
+      <div class="statusGrid" id="statusGrid">
+        <span>Checking native mode...</span>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <aside class="sidePanel" aria-label="Chat controls">
+        <label>
+          Niche
+          <input id="nicheInput" value="Tech Reviews" />
+        </label>
+        <label>
+          Language
+          <input id="langInput" value="Tamil" />
+        </label>
+        <label>
+          API key
+          <input id="apiKeyInput" value="baiu-secret-12345" type="password" />
+        </label>
+        <button id="newChatBtn" type="button">New chat</button>
+        <div class="hint">
+          BaiuGPT searches, asks why/proof/risk internally, saves short source notes, and learns locally.
+        </div>
+      </aside>
+
+      <section class="chatPanel" aria-label="Chat">
+        <div id="messages" class="messages"></div>
+        <form id="chatForm" class="composer">
+          <textarea id="promptInput" rows="3" placeholder="Ask BaiuGPT anything..."></textarea>
+          <button id="sendBtn" type="submit">Send</button>
+        </form>
+      </section>
+    </section>
+  </main>
+
+  <script src="/ui/chat.js"></script>
+</body>
+</html>

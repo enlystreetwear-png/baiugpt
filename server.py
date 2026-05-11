@@ -1,7 +1,10 @@
 # server.py
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from typing import Optional, List, Dict, Any
+from pathlib import Path
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from native.memory import remember_feedback
@@ -92,6 +95,7 @@ class NativeOnlineLearnRequest(BaseModel):
 # FastAPI Setup
 # -------------------------
 app = FastAPI(title="BaiuGPT API", version="0.1.0")
+UI_DIR = Path(__file__).resolve().parent / "ui"
 
 # Enable CORS for your frontend
 app.add_middleware(
@@ -102,12 +106,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if UI_DIR.exists():
+    app.mount("/ui", StaticFiles(directory=str(UI_DIR)), name="ui")
+
 # -------------------------
 # Health Check
 # -------------------------
 @app.get("/health")
 def health():
     return {"status": "ok", "name": "BaiuGPT"}
+
+@app.get("/")
+def root():
+    return RedirectResponse(url="/chat")
+
+@app.get("/chat")
+def chat_page():
+    index_path = UI_DIR / "chat.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="Chat UI not found")
+    return FileResponse(str(index_path))
 
 @app.get("/native/status")
 def native_status_route(x_api_key: str = Header(...)):
