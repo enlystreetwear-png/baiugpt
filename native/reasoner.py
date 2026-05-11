@@ -76,10 +76,14 @@ def _creator_goal_from_snapshots(snapshots: List[Dict[str, Any]]) -> str:
 
 
 def _memory_note(niche: str) -> str:
-    if niche.lower() in {"general purpose", "general", "all purpose", "all-purpose", "content creation"}:
+    if _is_general_mode_name(niche):
         return "Local memory is enabled. I will use saved preferences when they match your question."
     memories = relevant_memories(niche)
-    better = [_clean(row.get("notes") or row.get("question")) for row in memories if row.get("notes") or row.get("question")]
+    better = [
+        _clean(row.get("notes") or row.get("question"))
+        for row in memories
+        if row.get("type") == "feedback" and (row.get("notes") or row.get("question"))
+    ]
     if not better:
         return "No saved feedback yet. Learn from this response after the user rates it."
     return "Saved learning: " + " | ".join(better[-3:])
@@ -100,6 +104,29 @@ def _intent(prompt: str) -> str:
     if any(term in text for term in ("write code", "simple code", "tell me output", "tell me that output", "code and output", "python code", "javascript code")):
         return "code"
     return "task"
+
+
+def _mode(value: str) -> str:
+    text = _clean(value, "tubecoach").lower()
+    if text in {"tubecoach", "tube coach", "creator", "youtube", "niche"}:
+        return "tubecoach"
+    if text in {"code", "code agent", "workspace"}:
+        return "code"
+    return "general"
+
+
+def _is_general_mode_name(value: str) -> bool:
+    return _clean(value).lower() in {
+        "",
+        "general",
+        "general purpose",
+        "all purpose",
+        "all-purpose",
+        "chat",
+        "general chat",
+        "normal chat",
+        "content creation",
+    }
 
 
 def _is_creator_niche(niche: str) -> bool:
@@ -153,11 +180,11 @@ def _learning_query(prompt: str, messages: List[Dict[str, Any]]) -> str:
     return prompt
 
 
-def _should_use_online(prompt: str, niche: str, messages: List[Dict[str, Any]]) -> bool:
+def _should_use_online(prompt: str, niche: str, messages: List[Dict[str, Any]], mode: str = "general") -> bool:
     intent = _intent(prompt)
     if intent in {"greeting", "meta", "identity", "code", "step_help"}:
         return False
-    if _is_creator_niche(niche):
+    if _mode(mode) == "tubecoach":
         return True
     text = _clean(_learning_query(prompt, messages)).lower()
     fresh_terms = (
@@ -186,7 +213,7 @@ def _claude_style_rules() -> List[str]:
         "Use fresh sources only when the answer depends on current facts.",
         "Keep memory as short useful signals, not copied webpages.",
         "Ask one or two clarifying questions only when they would change the answer.",
-        "Separate general chat from TubeCoach creator planning.",
+        "Keep general chat separate from specialist modes.",
     ]
 
 
@@ -202,8 +229,8 @@ def _general_chat_answer(prompt: str, niche: str, lang: str, learned: Dict[str, 
     elif intent == "meta":
         answer = (
             "You are chatting with BaiuGPT native mode.\n\n"
-            "Earlier it was treating every message like a TubeCoach planning task. I now separate greetings, meta chat, general questions, "
-            "and creator-planning prompts. Useful questions can trigger online learning; low-value prompts will not pollute memory."
+            "This is General Chat. It answers normal questions directly, uses online search only for fresh facts, "
+            "and keeps specialist planning out of this chat mode."
         )
     elif intent == "identity":
         answer = (
@@ -518,28 +545,30 @@ def refine_task_guide(payload: Dict[str, Any], base: Dict[str, Any]) -> Dict[str
 
 def native_answer(
     prompt: str,
-    niche: str = "content creation",
+    niche: str = "Tech Reviews",
     lang: str = "English",
     messages: List[Dict[str, Any]] = None,
+    mode: str = "tubecoach",
 ) -> Dict[str, Any]:
     messages = messages or []
+    mode = _mode(mode)
     prompt = _clean(prompt, "Give me a creator plan")
     learning_query = _learning_query(prompt, messages)
-    use_online = _should_use_online(prompt, niche, messages)
+    use_online = _should_use_online(prompt, niche, messages, mode)
     learned = learn_online(learning_query, niche=niche, lang=lang, deep=True) if use_online and should_learn_online(learning_query) else {
         "status": "skipped",
         "reason": "online search not needed for this prompt",
         "learned": 0,
         "sources": [],
     }
-    chat = _general_chat_answer(prompt, niche, lang, learned)
+    is_creator_niche = mode == "tubecoach"
+    chat = {} if is_creator_niche else _general_chat_answer(prompt, niche, lang, learned)
     if chat:
         return chat
 
     memories = _memory_note(niche)
     self_qs = self_questions(prompt, niche)
     followups = user_followups(prompt, niche)
-    is_creator_niche = _is_creator_niche(niche)
     heading = f"BaiuGPT native plan for {niche}" if is_creator_niche else "BaiuGPT native answer"
     main_decision = (
         f"turn '{prompt}' into one viewer promise"

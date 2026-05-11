@@ -74,7 +74,7 @@ class TaskGuideRequest(BaseModel):
 
 class NativeGenerateRequest(BaseModel):
     prompt: str
-    niche: Optional[str] = "content creation"
+    niche: Optional[str] = "Tech Reviews"
     lang: Optional[str] = "English"
     messages: Optional[List[Dict[str, Any]]] = []
 
@@ -211,12 +211,19 @@ def ai_coach(request: CoachRequest, x_api_key: str = Header(...)):
 def native_generate(request: NativeGenerateRequest, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
     try:
-        return native_answer(
-            request.prompt,
-            niche=request.niche or "content creation",
-            lang=request.lang or "English",
-            messages=request.messages or [],
+        niche = request.niche or "Tech Reviews"
+        lang = request.lang or "English"
+        messages = request.messages or [{"role": "user", "text": request.prompt}]
+        result = chat_with_coach(
+            messages=messages,
+            user={},
+            channel={},
+            profile={"niche": niche, "lang": lang},
+            taskContext=None,
+            niche=niche,
+            lang=lang,
         )
+        return {"answer": result.get("answer", ""), "sources": result.get("sources", []), "mode": "tubecoach"}
     except Exception as e:
         return {"error": str(e)}
 

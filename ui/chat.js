@@ -86,15 +86,13 @@ async function loadStatus() {
 }
 
 async function sendPrompt(prompt) {
-  const mode = (nicheInput.value || "").toLowerCase();
-  const endpoint = mode.includes("code") ? "/ai/code-agent" : "/ai/native-generate";
   const body = {
     prompt,
-    niche: nicheInput.value || "content creation",
+    niche: nicheInput.value || "Tech Reviews",
     lang: langInput.value || "English",
     messages: chatHistory.slice(-8),
   };
-  const response = await fetch(endpoint, {
+  const response = await fetch("/ai/native-generate", {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -142,7 +140,7 @@ formEl.addEventListener("submit", async (event) => {
 newChatBtn.addEventListener("click", () => {
   messagesEl.innerHTML = "";
   chatHistory = [];
-  addMessage("assistant", "New local BaiuGPT chat ready. Ask normally. I will skip useless searches, learn from useful questions, and keep the answer in general-purpose mode unless you choose a niche.");
+  addMessage("assistant", "New TubeCoach chat ready. Ask for YouTube ideas, scripts, SEO, thumbnails, Shorts, or a weekly creator plan.");
 });
 
 promptEl.addEventListener("keydown", (event) => {
@@ -156,4 +154,4 @@ loadStatus().catch(() => {
   statusGrid.innerHTML = `<span class="pill">Start BaiuGPT API, then refresh</span>`;
 });
 
-addMessage("assistant", "BaiuGPT native chat is ready. One RTX 4060 is active now. Use General Purpose for normal chat, or type a niche like Tech Reviews when you want TubeCoach-style planning.");
+addMessage("assistant", "TubeCoach AI is ready. BaiuGPT native mode is using your local PC for YouTube creator planning.");

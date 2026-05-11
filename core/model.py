@@ -366,6 +366,15 @@ def _content_pack(niche: str, trend: str, secondary: str, lang: str) -> Dict[str
     }
 
 
+def _pack_titles(pack: Dict[str, Any]) -> List[str]:
+    titles = pack.get("titles", [])
+    if isinstance(titles, dict):
+        return [str(value) for value in titles.values() if value]
+    if isinstance(titles, list):
+        return [str(value) for value in titles if value]
+    return []
+
+
 def _short_topic(title: str, niche: str) -> str:
     title = re.sub(r"\s*[-–|:]\s*(YouTube|Google|Forbes|Reddit|Guide|Review|AIR Media-Tech|Beacons|Tom's Guide|TechRadar|Android Central|Android Authority|PhoneArena).*$", "", title, flags=re.I)
     title = re.sub(r"\b(2024|2025|2026)\b", "", title)
@@ -843,6 +852,10 @@ def chat_with_coach(
     niche = niche or _profile_niche(profile)
     lang = lang or _profile_lang(profile)
     trends = _trend_context(niche, prompt)
+    primary = trends[0]["topic"] if trends else niche
+    secondary = trends[1]["topic"] if len(trends) > 1 else f"{niche} comparison"
+    pack = _content_pack(niche, primary, secondary, lang)
+    pack_titles = _pack_titles(pack)
 
     if niche:
         prompt += f"\nNiche: {niche}"
@@ -856,27 +869,32 @@ def chat_with_coach(
 
     if research_question.strip().lower() in {"hi", "hello", "hey", "hai"}:
         answer_text = (
-            f"Hi. For your {niche} channel, the smartest move is to choose one trend angle and turn it into a clear verdict video.\n\n"
-            f"Top angle to use now: {trends[0]['topic']}.\n"
-            f"Make the hook: 'Before you buy or try this, here is what matters most.'\n"
-            f"Then create one Short from the strongest proof point.\n\n"
-            f"If you are working on '{task_title or 'this task'}', ask me for a title, hook, script, thumbnail, or SEO pack."
+            f"Hi. I am TubeCoach for your {niche} channel.\n\n"
+            f"Best topic to work on now: {primary}.\n"
+            f"Suggested title: {pack_titles[0] if pack_titles else primary}\n"
+            f"Opening hook: show the result or verdict first, then explain the proof in {lang}.\n"
+            f"Next action: ask me for a full script, SEO pack, thumbnail idea, or weekly plan."
         )
         sources = _trend_sources(trends)
     else:
-        result = research_answer(f"{research_question}\nTask: {task_title}\nLanguage: {lang}", niche=niche)
         trend_lines = "\n".join([f"- {item['topic']}" for item in trends[:3]])
+        title_lines = "\n".join([f"- {title}" for title in pack_titles[:3]])
+        tag_line = ", ".join(pack.get("tags", [])[:8])
         answer_text = (
-            f"Smart {niche} recommendation based on current trend signals:\n\n"
+            f"TubeCoach recommendation for {niche}:\n\n"
             f"{trend_lines}\n\n"
-            f"For '{task_title or research_question}', use this structure:\n"
-            f"1. Hook: show the final verdict/result first.\n"
-            f"2. Proof: compare 2-3 concrete points viewers care about.\n"
-            f"3. Decision: say who should use/buy/skip it.\n"
-            f"4. Short: cut the strongest 20-45 second verdict as a separate post.\n\n"
-            f"{result.get('answer', '').strip()}"
+            f"For '{task_title or research_question}', use this exact plan:\n"
+            f"1. Hook: show the final result, verdict, or comparison in the first 5 seconds.\n"
+            f"2. Proof: cover 3 viewer-first points from '{primary}'.\n"
+            f"3. Decision: clearly say who should try it, buy it, skip it, or comment.\n"
+            f"4. Short: cut the strongest proof moment into a 20-45 second Short.\n\n"
+            f"Titles:\n{title_lines}\n\n"
+            f"Description:\n{pack.get('description')}\n\n"
+            f"Tags: {tag_line}\n\n"
+            f"Thumbnail: {pack.get('thumbnail')}\n\n"
+            f"Pinned comment: {pack.get('pinnedComment') or pack.get('first_comment')}"
         ).strip()
-        sources = _trend_sources(trends) or result.get("sources", [])
+        sources = _trend_sources(trends)
 
     return {"answer": answer_text, "sources": sources}
 
