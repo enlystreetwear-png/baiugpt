@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 from native.config import NATIVE_AUTO_ONLINE_LEARN, NATIVE_MEMORY_PATH, NATIVE_TRAINING_PATH
 from native.memory import append_jsonl, read_jsonl
+from native.training_maintenance import rebuild_native_dataset
 from research.research import search_web
 
 
@@ -30,7 +31,66 @@ def _safe_result(result: Dict[str, Any]) -> Dict[str, str]:
     return {"title": title, "url": url, "snippet": snippet}
 
 
+def should_learn_online(query: str) -> bool:
+    query = _clean(query).lower().strip(" ?!.")
+    if not query:
+        return False
+    greetings = {"hi", "hello", "hey", "hai", "yo", "ok", "thanks", "thank you"}
+    if query in greetings:
+        return False
+    meta_prompts = {
+        "what is happening here",
+        "what is happening",
+        "what are you doing",
+        "who are you",
+        "how are you",
+    }
+    if query in meta_prompts:
+        return False
+    if len(query.split()) < 3 and not any(char.isdigit() for char in query):
+        return False
+    return True
+
+
+def _is_bad_source(item: Dict[str, str]) -> bool:
+    blob = f"{item.get('title', '')} {item.get('url', '')} {item.get('snippet', '')}".lower()
+    blocked = (
+        "dictionary",
+        "definition",
+        "meaning of",
+        "pronunciation",
+        "synonym",
+        "merriam-webster",
+        "cambridge.org",
+        "collinsdictionary",
+        "thefreedictionary",
+        "wikipedia",
+        "microsoft lists",
+        "microsoft 365",
+        "to-do list",
+        "task list",
+        "happening now",
+        "privacy policy",
+        "terms of service",
+    )
+    return any(term in blob for term in blocked)
+
+
+def _base_search_query(query: str, niche: str) -> str:
+    q = query.lower()
+    if any(term in q for term in ("phone", "phones", "mobile", "mobiles", "smartphone")) and any(term in q for term in ("rs", "₹", "under", "below", "29999", "30000")):
+        return "best smartphones under 30000 India 2026 review price camera battery performance"
+    return f"{query} {niche} latest facts trends guide examples"
+
+
 def _deep_queries(query: str, niche: str) -> List[str]:
+    q = query.lower()
+    if any(term in q for term in ("phone", "phones", "mobile", "mobiles", "smartphone")):
+        return [
+            f"{query} best models India review camera battery performance",
+            f"{query} comparison price specs pros cons",
+            f"{query} buyer guide India latest",
+        ]
     return [
         f"why {query} matters for {niche}",
         f"{query} common mistakes problems examples",
@@ -50,10 +110,10 @@ def learn_online(
     lang = _clean(lang)
     if not NATIVE_AUTO_ONLINE_LEARN:
         return {"status": "skipped", "reason": "BAIUGPT_AUTO_ONLINE_LEARN is disabled", "learned": 0, "sources": []}
-    if len(query) < 3:
-        return {"status": "skipped", "reason": "query too short", "learned": 0, "sources": []}
+    if not should_learn_online(query):
+        return {"status": "skipped", "reason": "low-value chat prompt", "learned": 0, "sources": []}
 
-    search_queries = [f"{query} {niche} latest facts trends guide examples"]
+    search_queries = [_base_search_query(query, niche)]
     if deep:
         search_queries.extend(_deep_queries(query, niche))
 
@@ -68,11 +128,12 @@ def learn_online(
     known = _known_ids()
     learned = 0
     sources: List[Dict[str, str]] = []
+    signals: List[Dict[str, str]] = []
     now = int(time.time())
 
     for raw in results:
         item = _safe_result(raw)
-        if not item["title"] or not item["url"]:
+        if not item["title"] or not item["url"] or _is_bad_source(item):
             continue
         item_id = _fingerprint(query, item["title"], item["url"])
         if item_id in known:
@@ -112,6 +173,9 @@ def learn_online(
         })
         learned += 1
         sources.append({"title": item["title"], "url": item["url"]})
+        signals.append(item)
+
+    rebuild = rebuild_native_dataset() if learned else {"status": "skipped", "reason": "no new learning"}
 
     return {
         "status": "saved",
@@ -120,4 +184,6 @@ def learn_online(
         "deep": deep,
         "learned": learned,
         "sources": sources,
+        "signals": signals,
+        "dataset": rebuild,
     }

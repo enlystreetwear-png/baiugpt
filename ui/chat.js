@@ -129,7 +129,7 @@ formEl.addEventListener("submit", async (event) => {
 
 newChatBtn.addEventListener("click", () => {
   messagesEl.innerHTML = "";
-  addMessage("assistant", "New local BaiuGPT chat ready. Ask anything and I will search, ask why, save learning signals, and answer from native mode.");
+  addMessage("assistant", "New local BaiuGPT chat ready. Ask normally. I will skip useless searches, learn from useful questions, and keep the answer in general-purpose mode unless you choose a niche.");
 });
 
 promptEl.addEventListener("keydown", (event) => {
@@ -143,4 +143,4 @@ loadStatus().catch(() => {
   statusGrid.innerHTML = `<span class="pill">Start BaiuGPT API, then refresh</span>`;
 });
 
-addMessage("assistant", "BaiuGPT native chat is ready. One RTX 4060 is active now; future multi-GPU support can build on the status layer.");
+addMessage("assistant", "BaiuGPT native chat is ready. One RTX 4060 is active now. Use General Purpose for normal chat, or type a niche like Tech Reviews when you want TubeCoach-style planning.");

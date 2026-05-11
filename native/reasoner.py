@@ -1,9 +1,9 @@
 from typing import Any, Dict, List
 
-from native.config import NATIVE_ENABLED
+from native.config import NATIVE_AUTO_ONLINE_LEARN, NATIVE_AUTO_REBUILD_DATASET, NATIVE_ENABLED
 from native.curiosity import curiosity_summary, self_questions, user_followups
 from native.memory import memory_stats, relevant_memories
-from native.online_learning import learn_online
+from native.online_learning import learn_online, should_learn_online
 
 
 def _clean(value: Any, fallback: str = "") -> str:
@@ -55,6 +55,12 @@ def native_status() -> Dict[str, Any]:
         "device": _device_status(),
     }
     status.update(memory_stats())
+    status["autoUpdate"] = {
+        "onlineLearning": NATIVE_AUTO_ONLINE_LEARN,
+        "datasetRebuild": NATIVE_AUTO_REBUILD_DATASET,
+        "weightTraining": "manual-or-scheduled",
+        "reason": "GPU training after every chat would slow the app and can learn bad data.",
+    }
     return status
 
 
@@ -74,6 +80,64 @@ def _memory_note(niche: str) -> str:
     if not better:
         return "No saved feedback yet. Learn from this response after the user rates it."
     return "Saved learning: " + " | ".join(better[-3:])
+
+
+def _intent(prompt: str) -> str:
+    text = _clean(prompt).lower().strip(" ?!.")
+    if text in {"hi", "hello", "hey", "hai", "yo", "good morning", "good evening", "good afternoon"}:
+        return "greeting"
+    if text in {"what is happening here", "what is happening", "what are you doing"}:
+        return "meta"
+    if text in {"who are you", "what are you", "what is baiugpt"}:
+        return "identity"
+    return "task"
+
+
+def _general_chat_answer(prompt: str, niche: str, lang: str, learned: Dict[str, Any]) -> Dict[str, Any]:
+    intent = _intent(prompt)
+    memories = _memory_note(niche)
+    if intent == "greeting":
+        answer = (
+            f"Hi. I am BaiuGPT, running locally on your PC with native mode.\n\n"
+            "I can help with general questions, YouTube planning, tech research, scripts, coding ideas, and learning from your feedback. "
+            "Ask me normally; I will only search online when the question is worth updating memory."
+        )
+    elif intent == "meta":
+        answer = (
+            "You are chatting with BaiuGPT native mode.\n\n"
+            "Earlier it was treating every message like a TubeCoach planning task. I now separate greetings, meta chat, general questions, "
+            "and creator-planning prompts. Useful questions can trigger online learning; low-value prompts will not pollute memory."
+        )
+    elif intent == "identity":
+        answer = (
+            "I am BaiuGPT, your local AI assistant. This version runs from your BaiuGPT server, uses your local memory/training files, "
+            "and detects your RTX GPU for training workflows."
+        )
+    else:
+        answer = ""
+
+    if answer:
+        return {
+            "answer": f"{answer}\n\nLanguage: {lang}\n{memories}",
+            "sources": learned.get("sources", []),
+            "native": native_status(),
+            "learning": learned,
+            "curiosity": curiosity_summary(prompt, niche, learned.get("learned", 0)),
+        }
+    return {}
+
+
+def _source_signal_lines(learned: Dict[str, Any]) -> List[str]:
+    signals = learned.get("signals") or []
+    lines = []
+    for item in signals[:5]:
+        title = _clean(item.get("title"))
+        snippet = _clean(item.get("snippet"))
+        if title and snippet:
+            lines.append(f"- {title}: {snippet}")
+        elif title:
+            lines.append(f"- {title}")
+    return lines
 
 
 def _make_task_smarter(task: Dict[str, Any], niche: str, lang: str, trend_index: int) -> Dict[str, Any]:
@@ -168,25 +232,61 @@ def refine_task_guide(payload: Dict[str, Any], base: Dict[str, Any]) -> Dict[str
 
 def native_answer(prompt: str, niche: str = "content creation", lang: str = "English") -> Dict[str, Any]:
     prompt = _clean(prompt, "Give me a creator plan")
-    learned = learn_online(prompt, niche=niche, lang=lang, deep=True)
+    learned = learn_online(prompt, niche=niche, lang=lang, deep=True) if should_learn_online(prompt) else {
+        "status": "skipped",
+        "reason": "low-value chat prompt",
+        "learned": 0,
+        "sources": [],
+    }
+    chat = _general_chat_answer(prompt, niche, lang, learned)
+    if chat:
+        return chat
+
     memories = _memory_note(niche)
     self_qs = self_questions(prompt, niche)
     followups = user_followups(prompt, niche)
-    answer = (
-        f"BaiuGPT native plan for {niche}:\n\n"
-        f"1. Main decision: turn '{prompt}' into one viewer promise.\n"
-        f"2. Why check: {self_qs[0] if self_qs else 'Why does this matter now?'}\n"
-        f"3. Proof check: {self_qs[1] if len(self_qs) > 1 else 'What proof makes this trustworthy?'}\n"
-        f"4. Risk check: {self_qs[2] if len(self_qs) > 2 else 'What should beginners avoid?'}\n"
-        "5. Action: open with the result, show 3 evidence points, then give a clear next action.\n"
-        "6. SEO: create one searchable title, one curiosity title, and one mistake-based title.\n"
-        "7. Learning: save viewer comments and your rating so I can improve the next output.\n\n"
-        "Questions for you:\n"
-        + "\n".join(f"- {question}" for question in followups)
-        + "\n\n"
-        f"Language: {lang}\n{memories}\n"
-        f"Online learning: saved {learned.get('learned', 0)} new source signals."
+    is_creator_niche = any(term in niche.lower() for term in ("youtube", "creator", "tech review", "gaming", "cooking", "fitness", "education", "beauty", "finance"))
+    heading = f"BaiuGPT native plan for {niche}" if is_creator_niche else "BaiuGPT native answer"
+    main_decision = (
+        f"turn '{prompt}' into one viewer promise"
+        if is_creator_niche else
+        f"answer '{prompt}' with clear reasoning, useful examples, and a practical next step"
     )
+    signal_lines = _source_signal_lines(learned)
+    if is_creator_niche:
+        answer = (
+            f"{heading}:\n\n"
+            f"1. Main decision: {main_decision}.\n"
+            f"2. Why check: {self_qs[0] if self_qs else 'Why does this matter now?'}\n"
+            f"3. Proof check: {self_qs[1] if len(self_qs) > 1 else 'What proof makes this trustworthy?'}\n"
+            f"4. Risk check: {self_qs[2] if len(self_qs) > 2 else 'What should beginners avoid?'}\n"
+            "5. Action: give the answer first, show 3 useful evidence points, then give a clear next step.\n"
+            "6. Source use: keep short source notes and URLs instead of copying full pages.\n"
+            "7. Learning: save feedback so future answers improve.\n\n"
+            "Questions for you:\n"
+            + "\n".join(f"- {question}" for question in followups)
+            + "\n\n"
+            f"Language: {lang}\n{memories}\n"
+            f"Online learning: saved {learned.get('learned', 0)} new source signals."
+        )
+    else:
+        answer = (
+            f"{heading}:\n\n"
+            f"You asked: {prompt}\n\n"
+            "What I can do now: I searched for useful source signals, saved the clean notes locally, and rebuilt the local training dataset automatically.\n\n"
+            "What I found:\n"
+            + ("\n".join(signal_lines) if signal_lines else "- No strong new source signal was needed for this prompt.")
+            + "\n\n"
+            "My current answer: use the source links as fresh context, then ask me for the exact format you want: quick answer, detailed explanation, comparison table, code, script, or step-by-step plan.\n\n"
+            "Self-checks I used:\n"
+            + "\n".join(f"- {question}" for question in self_qs)
+            + "\n\n"
+            "Questions for you:\n"
+            + "\n".join(f"- {question}" for question in followups)
+            + "\n\n"
+            f"Language: {lang}\n{memories}\n"
+            f"Online learning: saved {learned.get('learned', 0)} new source signals."
+        )
     return {
         "answer": answer,
         "sources": learned.get("sources", []),

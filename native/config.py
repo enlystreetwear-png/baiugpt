@@ -8,6 +8,7 @@ NATIVE_MEMORY_PATH = Path(os.getenv("BAIUGPT_NATIVE_MEMORY", DATA_DIR / "native_
 NATIVE_TRAINING_PATH = Path(os.getenv("BAIUGPT_NATIVE_TRAINING", DATA_DIR / "tubecoach_training.jsonl"))
 NATIVE_ENABLED = os.getenv("BAIUGPT_NATIVE_MODE", "true").lower() in {"1", "true", "yes", "on"}
 NATIVE_AUTO_ONLINE_LEARN = os.getenv("BAIUGPT_AUTO_ONLINE_LEARN", "true").lower() in {"1", "true", "yes", "on"}
+NATIVE_AUTO_REBUILD_DATASET = os.getenv("BAIUGPT_AUTO_REBUILD_DATASET", "true").lower() in {"1", "true", "yes", "on"}
 
 
 def ensure_native_dirs() -> None:

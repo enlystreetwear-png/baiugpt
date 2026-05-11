@@ -26,6 +26,7 @@ BaiuGPT can search online when a user asks about a term, ask itself why/proof/ri
 
 ```powershell
 $env:BAIUGPT_AUTO_ONLINE_LEARN="true"
+$env:BAIUGPT_AUTO_REBUILD_DATASET="true"
 ```
 
 Manual online learning test:
@@ -40,6 +41,8 @@ Invoke-RestMethod `
 ```
 
 This stores only short notes, source titles, and URLs. It does not copy full pages.
+
+When useful learning is saved, BaiuGPT automatically rebuilds and tokenizes the local training dataset. It does not run full GPU weight training after every chat because that can freeze the app and learn bad data. Run full training manually or on a schedule after reviewing enough good examples.
 
 During chat, native mode also returns `curiosity` metadata:
 

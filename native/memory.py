@@ -67,6 +67,23 @@ def remember_feedback(payload: Dict[str, Any]) -> Dict[str, Any]:
 def relevant_memories(niche: str = "", limit: int = 8) -> List[Dict[str, Any]]:
     rows = read_jsonl(NATIVE_MEMORY_PATH)
     niche_l = _clean(niche).lower()
+    blocked = (
+        "dictionary",
+        "definition",
+        "meaning of",
+        "pronunciation",
+        "synonyms",
+        "happening now",
+        "wikipedia",
+        "microsoft lists",
+        "microsoft 365",
+        "to-do list",
+        "task list",
+    )
+    rows = [
+        row for row in rows
+        if not any(term in f"{row.get('title', '')} {row.get('url', '')} {row.get('notes', '')}".lower() for term in blocked)
+    ]
     if niche_l:
         matched = [row for row in rows if niche_l in _clean(row.get("niche")).lower()]
     else:
@@ -81,4 +98,3 @@ def memory_stats() -> Dict[str, Any]:
         "memoryPath": str(NATIVE_MEMORY_PATH),
         "trainingPath": str(NATIVE_TRAINING_PATH),
     }
-
