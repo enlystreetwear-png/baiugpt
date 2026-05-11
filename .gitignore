@@ -14,3 +14,4 @@ data/tubecoach_training.jsonl
 logs/
 models/
 rag_db/
+claude-code-main/

@@ -7,6 +7,7 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from native.code_agent import code_agent_answer
 from native.memory import remember_feedback
 from native.online_learning import learn_online
 from native.reasoner import (
@@ -90,6 +91,9 @@ class NativeOnlineLearnRequest(BaseModel):
     niche: Optional[str] = "content creation"
     lang: Optional[str] = "English"
     maxResults: Optional[int] = 5
+
+class CodeAgentRequest(BaseModel):
+    prompt: str
 
 # -------------------------
 # FastAPI Setup
@@ -229,6 +233,14 @@ def native_online_learn(request: NativeOnlineLearnRequest, x_api_key: str = Head
             max_results=request.maxResults or 5,
             deep=True,
         )
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/ai/code-agent")
+def code_agent(request: CodeAgentRequest, x_api_key: str = Header(...)):
+    validate_api_key(x_api_key)
+    try:
+        return code_agent_answer(request.prompt)
     except Exception as e:
         return {"error": str(e)}
 

@@ -80,12 +80,14 @@ async function loadStatus() {
 }
 
 async function sendPrompt(prompt) {
+  const mode = (nicheInput.value || "").toLowerCase();
+  const endpoint = mode.includes("code") ? "/ai/code-agent" : "/ai/native-generate";
   const body = {
     prompt,
     niche: nicheInput.value || "content creation",
     lang: langInput.value || "English",
   };
-  const response = await fetch("/ai/native-generate", {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "content-type": "application/json",
