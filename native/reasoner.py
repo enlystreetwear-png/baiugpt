@@ -75,6 +75,8 @@ def _creator_goal_from_snapshots(snapshots: List[Dict[str, Any]]) -> str:
 
 
 def _memory_note(niche: str) -> str:
+    if niche.lower() in {"general purpose", "general", "all purpose", "all-purpose", "content creation"}:
+        return "Local memory is enabled. I will use saved preferences when they match your question."
     memories = relevant_memories(niche)
     better = [_clean(row.get("notes") or row.get("question")) for row in memories if row.get("notes") or row.get("question")]
     if not better:
@@ -90,6 +92,8 @@ def _intent(prompt: str) -> str:
         return "meta"
     if text in {"who are you", "what are you", "what is baiugpt"}:
         return "identity"
+    if "weather" in text or "temperature" in text or "forecast" in text:
+        return "weather"
     return "task"
 
 
@@ -122,7 +126,7 @@ def _general_chat_answer(prompt: str, niche: str, lang: str, learned: Dict[str, 
             "sources": learned.get("sources", []),
             "native": native_status(),
             "learning": learned,
-            "curiosity": curiosity_summary(prompt, niche, learned.get("learned", 0)),
+            "curiosity": None,
         }
     return {}
 
@@ -138,6 +142,22 @@ def _source_signal_lines(learned: Dict[str, Any]) -> List[str]:
         elif title:
             lines.append(f"- {title}")
     return lines
+
+
+def _weather_answer(prompt: str, lang: str, learned: Dict[str, Any]) -> str:
+    lines = _source_signal_lines(learned)
+    if not lines:
+        return (
+            f"I could not get a strong live weather signal for '{prompt}' right now. "
+            "Try asking again with the city name, or check a live weather source."
+        )
+
+    return (
+        f"Here is what I found for '{prompt}':\n\n"
+        + "\n".join(lines[:4])
+        + "\n\nFor weather, treat this as a live-source summary. Conditions change quickly, so open one of the sources for the exact current temperature, rain chance, and hourly forecast."
+        + f"\n\nLanguage: {lang}"
+    )
 
 
 def _make_task_smarter(task: Dict[str, Any], niche: str, lang: str, trend_index: int) -> Dict[str, Any]:
@@ -253,6 +273,16 @@ def native_answer(prompt: str, niche: str = "content creation", lang: str = "Eng
         f"answer '{prompt}' with clear reasoning, useful examples, and a practical next step"
     )
     signal_lines = _source_signal_lines(learned)
+    if _intent(prompt) == "weather" and not is_creator_niche:
+        answer = _weather_answer(prompt, lang, learned)
+        return {
+            "answer": f"{answer}\n{memories}\nOnline learning: saved {learned.get('learned', 0)} new source signals.",
+            "sources": learned.get("sources", []),
+            "native": native_status(),
+            "learning": learned,
+            "curiosity": curiosity_summary(prompt, niche, learned.get("learned", 0)),
+        }
+
     if is_creator_niche:
         answer = (
             f"{heading}:\n\n"

@@ -31,6 +31,11 @@ def _safe_result(result: Dict[str, Any]) -> Dict[str, str]:
     return {"title": title, "url": url, "snippet": snippet}
 
 
+def _is_weather_query(query: str) -> bool:
+    q = _clean(query).lower()
+    return any(term in q for term in ("weather", "temperature", "forecast", "rain", "humidity"))
+
+
 def should_learn_online(query: str) -> bool:
     query = _clean(query).lower().strip(" ?!.")
     if not query:
@@ -52,7 +57,7 @@ def should_learn_online(query: str) -> bool:
     return True
 
 
-def _is_bad_source(item: Dict[str, str]) -> bool:
+def _is_bad_source(item: Dict[str, str], query: str = "") -> bool:
     blob = f"{item.get('title', '')} {item.get('url', '')} {item.get('snippet', '')}".lower()
     blocked = (
         "dictionary",
@@ -73,11 +78,31 @@ def _is_bad_source(item: Dict[str, str]) -> bool:
         "privacy policy",
         "terms of service",
     )
-    return any(term in blob for term in blocked)
+    if any(term in blob for term in blocked):
+        return True
+    if _is_weather_query(query):
+        weather_terms = (
+            "weather",
+            "forecast",
+            "temperature",
+            "rain",
+            "humidity",
+            "wind",
+            "accuweather",
+            "weather.com",
+            "timeanddate",
+            "meteoblue",
+            "bbc weather",
+            "weather underground",
+        )
+        return not any(term in blob for term in weather_terms)
+    return False
 
 
 def _base_search_query(query: str, niche: str) -> str:
     q = query.lower()
+    if _is_weather_query(query):
+        return f"{query} current weather hourly forecast temperature rain"
     if any(term in q for term in ("phone", "phones", "mobile", "mobiles", "smartphone")) and any(term in q for term in ("rs", "₹", "under", "below", "29999", "30000")):
         return "best smartphones under 30000 India 2026 review price camera battery performance"
     return f"{query} {niche} latest facts trends guide examples"
@@ -85,6 +110,12 @@ def _base_search_query(query: str, niche: str) -> str:
 
 def _deep_queries(query: str, niche: str) -> List[str]:
     q = query.lower()
+    if _is_weather_query(query):
+        return [
+            f"{query} today hourly forecast",
+            f"{query} 10 day forecast rain temperature",
+            f"{query} current conditions humidity wind",
+        ]
     if any(term in q for term in ("phone", "phones", "mobile", "mobiles", "smartphone")):
         return [
             f"{query} best models India review camera battery performance",
@@ -133,7 +164,7 @@ def learn_online(
 
     for raw in results:
         item = _safe_result(raw)
-        if not item["title"] or not item["url"] or _is_bad_source(item):
+        if not item["title"] or not item["url"] or _is_bad_source(item, query):
             continue
         item_id = _fingerprint(query, item["title"], item["url"])
         if item_id in known:
