@@ -166,6 +166,7 @@ def ai_coach(request: CoachRequest, x_api_key: str = Header(...)):
                 niche=request.niche or (request.profile or {}).get("niche") or "content creation",
                 lang=request.lang or (request.profile or {}).get("lang") or "English",
                 max_results=3,
+                deep=True,
             )
         result = chat_with_coach(
             messages=request.messages,
@@ -208,6 +209,7 @@ def native_online_learn(request: NativeOnlineLearnRequest, x_api_key: str = Head
             niche=request.niche or "content creation",
             lang=request.lang or "English",
             max_results=request.maxResults or 5,
+            deep=True,
         )
     except Exception as e:
         return {"error": str(e)}

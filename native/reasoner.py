@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 
 from native.config import NATIVE_ENABLED
+from native.curiosity import curiosity_summary, self_questions, user_followups
 from native.memory import memory_stats, relevant_memories
 from native.online_learning import learn_online
 
@@ -167,16 +168,29 @@ def refine_task_guide(payload: Dict[str, Any], base: Dict[str, Any]) -> Dict[str
 
 def native_answer(prompt: str, niche: str = "content creation", lang: str = "English") -> Dict[str, Any]:
     prompt = _clean(prompt, "Give me a creator plan")
-    learned = learn_online(prompt, niche=niche, lang=lang)
+    learned = learn_online(prompt, niche=niche, lang=lang, deep=True)
     memories = _memory_note(niche)
+    self_qs = self_questions(prompt, niche)
+    followups = user_followups(prompt, niche)
     answer = (
         f"BaiuGPT native plan for {niche}:\n\n"
         f"1. Main decision: turn '{prompt}' into one viewer promise.\n"
-        "2. Reasoning: choose the angle with the clearest proof, not the broadest topic.\n"
-        "3. Script: open with the result, show 3 evidence points, then give a clear next action.\n"
-        "4. SEO: create one searchable title, one curiosity title, and one mistake-based title.\n"
-        "5. Learning: save viewer comments and your rating so I can improve the next output.\n\n"
+        f"2. Why check: {self_qs[0] if self_qs else 'Why does this matter now?'}\n"
+        f"3. Proof check: {self_qs[1] if len(self_qs) > 1 else 'What proof makes this trustworthy?'}\n"
+        f"4. Risk check: {self_qs[2] if len(self_qs) > 2 else 'What should beginners avoid?'}\n"
+        "5. Action: open with the result, show 3 evidence points, then give a clear next action.\n"
+        "6. SEO: create one searchable title, one curiosity title, and one mistake-based title.\n"
+        "7. Learning: save viewer comments and your rating so I can improve the next output.\n\n"
+        "Questions for you:\n"
+        + "\n".join(f"- {question}" for question in followups)
+        + "\n\n"
         f"Language: {lang}\n{memories}\n"
         f"Online learning: saved {learned.get('learned', 0)} new source signals."
     )
-    return {"answer": answer, "sources": learned.get("sources", []), "native": native_status(), "learning": learned}
+    return {
+        "answer": answer,
+        "sources": learned.get("sources", []),
+        "native": native_status(),
+        "learning": learned,
+        "curiosity": curiosity_summary(prompt, niche, learned.get("learned", 0)),
+    }

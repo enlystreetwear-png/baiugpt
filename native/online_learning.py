@@ -30,7 +30,21 @@ def _safe_result(result: Dict[str, Any]) -> Dict[str, str]:
     return {"title": title, "url": url, "snippet": snippet}
 
 
-def learn_online(query: str, niche: str = "content creation", lang: str = "English", max_results: int = 5) -> Dict[str, Any]:
+def _deep_queries(query: str, niche: str) -> List[str]:
+    return [
+        f"why {query} matters for {niche}",
+        f"{query} common mistakes problems examples",
+        f"{query} latest buyer questions audience pain points",
+    ]
+
+
+def learn_online(
+    query: str,
+    niche: str = "content creation",
+    lang: str = "English",
+    max_results: int = 5,
+    deep: bool = False,
+) -> Dict[str, Any]:
     query = _clean(query)
     niche = _clean(niche, )
     lang = _clean(lang)
@@ -39,9 +53,15 @@ def learn_online(query: str, niche: str = "content creation", lang: str = "Engli
     if len(query) < 3:
         return {"status": "skipped", "reason": "query too short", "learned": 0, "sources": []}
 
-    search_query = f"{query} {niche} latest facts trends guide examples"
+    search_queries = [f"{query} {niche} latest facts trends guide examples"]
+    if deep:
+        search_queries.extend(_deep_queries(query, niche))
+
     try:
-        results = search_web(search_query, max_results=max_results)
+        results = []
+        per_query = max(1, min(max_results, 3))
+        for search_query in search_queries:
+            results.extend(search_web(search_query, max_results=per_query))
     except Exception as exc:
         return {"status": "error", "error": str(exc), "learned": 0, "sources": []}
 
@@ -68,6 +88,7 @@ def learn_online(query: str, niche: str = "content creation", lang: str = "Engli
             "lang": lang,
             "title": item["title"],
             "url": item["url"],
+            "deep": deep,
             "notes": f"Online signal for '{query}': {item['snippet']}",
         }
         append_jsonl(NATIVE_MEMORY_PATH, memory)
@@ -96,7 +117,7 @@ def learn_online(query: str, niche: str = "content creation", lang: str = "Engli
         "status": "saved",
         "query": query,
         "niche": niche,
+        "deep": deep,
         "learned": learned,
         "sources": sources,
     }
-

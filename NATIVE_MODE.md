@@ -22,7 +22,7 @@ If PyTorch can see your RTX 4060, `cudaAvailable` will be `true`.
 
 ## Auto Online Learning
 
-BaiuGPT can search online when a user asks about a term, then save short source-backed signals into local memory and training data.
+BaiuGPT can search online when a user asks about a term, ask itself why/proof/risk questions, then save short source-backed signals into local memory and training data.
 
 ```powershell
 $env:BAIUGPT_AUTO_ONLINE_LEARN="true"
@@ -40,6 +40,14 @@ Invoke-RestMethod `
 ```
 
 This stores only short notes, source titles, and URLs. It does not copy full pages.
+
+During chat, native mode also returns `curiosity` metadata:
+
+```text
+selfQuestions  - what BaiuGPT asked itself before answering
+askUserNext    - follow-up questions for the user
+learnedSignals - how many new source signals were saved
+```
 
 ## Save Feedback So BaiuGPT Learns
 
