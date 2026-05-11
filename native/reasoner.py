@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 
 from native.config import NATIVE_ENABLED
 from native.memory import memory_stats, relevant_memories
+from native.online_learning import learn_online
 
 
 def _clean(value: Any, fallback: str = "") -> str:
@@ -166,6 +167,7 @@ def refine_task_guide(payload: Dict[str, Any], base: Dict[str, Any]) -> Dict[str
 
 def native_answer(prompt: str, niche: str = "content creation", lang: str = "English") -> Dict[str, Any]:
     prompt = _clean(prompt, "Give me a creator plan")
+    learned = learn_online(prompt, niche=niche, lang=lang)
     memories = _memory_note(niche)
     answer = (
         f"BaiuGPT native plan for {niche}:\n\n"
@@ -174,7 +176,7 @@ def native_answer(prompt: str, niche: str = "content creation", lang: str = "Eng
         "3. Script: open with the result, show 3 evidence points, then give a clear next action.\n"
         "4. SEO: create one searchable title, one curiosity title, and one mistake-based title.\n"
         "5. Learning: save viewer comments and your rating so I can improve the next output.\n\n"
-        f"Language: {lang}\n{memories}"
+        f"Language: {lang}\n{memories}\n"
+        f"Online learning: saved {learned.get('learned', 0)} new source signals."
     )
-    return {"answer": answer, "sources": [], "native": native_status()}
-
+    return {"answer": answer, "sources": learned.get("sources", []), "native": native_status(), "learning": learned}

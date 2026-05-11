@@ -20,6 +20,27 @@ Invoke-RestMethod `
 
 If PyTorch can see your RTX 4060, `cudaAvailable` will be `true`.
 
+## Auto Online Learning
+
+BaiuGPT can search online when a user asks about a term, then save short source-backed signals into local memory and training data.
+
+```powershell
+$env:BAIUGPT_AUTO_ONLINE_LEARN="true"
+```
+
+Manual online learning test:
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://localhost:8000/ai/native-online-learn" `
+  -Method Post `
+  -Headers @{ "x-api-key" = "baiu-secret-12345" } `
+  -ContentType "application/json" `
+  -Body '{"query":"best phones under 30000 India","niche":"Tech Reviews","lang":"Tamil","maxResults":5}'
+```
+
+This stores only short notes, source titles, and URLs. It does not copy full pages.
+
 ## Save Feedback So BaiuGPT Learns
 
 ```powershell

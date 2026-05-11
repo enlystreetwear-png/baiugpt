@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from native.memory import remember_feedback
+from native.online_learning import learn_online
 from native.reasoner import (
     native_answer,
     native_status,
@@ -81,6 +82,12 @@ class NativeFeedbackRequest(BaseModel):
     betterOutput: Optional[Any] = None
     notes: Optional[str] = ""
 
+class NativeOnlineLearnRequest(BaseModel):
+    query: str
+    niche: Optional[str] = "content creation"
+    lang: Optional[str] = "English"
+    maxResults: Optional[int] = 5
+
 # -------------------------
 # FastAPI Setup
 # -------------------------
@@ -148,6 +155,18 @@ def analyze_channel_route(request: AnalyzeChannelRequest, x_api_key: str = Heade
 def ai_coach(request: CoachRequest, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
     try:
+        user_text = " ".join(
+            str(message.get("text") or message.get("content") or message.get("message") or "")
+            for message in (request.messages or [])
+        ).strip()
+        online_learning = None
+        if user_text:
+            online_learning = learn_online(
+                user_text,
+                niche=request.niche or (request.profile or {}).get("niche") or "content creation",
+                lang=request.lang or (request.profile or {}).get("lang") or "English",
+                max_results=3,
+            )
         result = chat_with_coach(
             messages=request.messages,
             user=request.user,
@@ -157,7 +176,10 @@ def ai_coach(request: CoachRequest, x_api_key: str = Header(...)):
             niche=request.niche,
             lang=request.lang
         )
-        return {"reply": result["answer"], "sources": result.get("sources", [])}
+        sources = result.get("sources", [])
+        if online_learning:
+            sources = online_learning.get("sources", []) + sources
+        return {"reply": result["answer"], "sources": sources, "nativeLearning": online_learning}
     except Exception as e:
         return {"error": str(e)}
 
@@ -174,6 +196,19 @@ def native_feedback(request: NativeFeedbackRequest, x_api_key: str = Header(...)
     validate_api_key(x_api_key)
     try:
         return remember_feedback(request.dict())
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/ai/native-online-learn")
+def native_online_learn(request: NativeOnlineLearnRequest, x_api_key: str = Header(...)):
+    validate_api_key(x_api_key)
+    try:
+        return learn_online(
+            request.query,
+            niche=request.niche or "content creation",
+            lang=request.lang or "English",
+            max_results=request.maxResults or 5,
+        )
     except Exception as e:
         return {"error": str(e)}
 
