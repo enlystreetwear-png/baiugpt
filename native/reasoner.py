@@ -1,3 +1,4 @@
+import re
 from typing import Any, Dict, List
 
 from native.config import NATIVE_AUTO_ONLINE_LEARN, NATIVE_AUTO_REBUILD_DATASET, NATIVE_ENABLED
@@ -97,6 +98,67 @@ def _intent(prompt: str) -> str:
     return "task"
 
 
+def _is_creator_niche(niche: str) -> bool:
+    lower = _clean(niche).lower()
+    return any(term in lower for term in (
+        "youtube",
+        "creator",
+        "tube",
+        "tech review",
+        "gaming",
+        "cooking",
+        "fitness",
+        "education",
+        "beauty",
+        "finance",
+    ))
+
+
+def _recent_user_context(messages: List[Dict[str, Any]]) -> str:
+    if not messages:
+        return ""
+    user_lines = []
+    for message in messages[-8:]:
+        if _clean(message.get("role")).lower() == "user":
+            text = _clean(message.get("text") or message.get("content") or message.get("message"))
+            if text:
+                user_lines.append(text)
+    if len(user_lines) <= 1:
+        return ""
+    return "Previous context: " + " | ".join(user_lines[-3:-1])
+
+
+def _question_is_followup(prompt: str) -> bool:
+    text = _clean(prompt).lower()
+    return len(text.split()) <= 5 and any(term in text for term in (
+        "what about",
+        "battery",
+        "camera",
+        "price",
+        "performance",
+        "which one",
+        "why",
+        "how",
+    ))
+
+
+def _learning_query(prompt: str, messages: List[Dict[str, Any]]) -> str:
+    context = _recent_user_context(messages)
+    if context and _question_is_followup(prompt):
+        return f"{context}. Follow-up: {prompt}"
+    return prompt
+
+
+def _claude_style_rules() -> List[str]:
+    return [
+        "Answer the user directly before asking follow-up questions.",
+        "Use fresh sources only when the answer depends on current facts.",
+        "Keep memory as short useful signals, not copied webpages.",
+        "Ask one or two clarifying questions only when they would change the answer.",
+        "Separate general chat from TubeCoach creator planning.",
+    ]
+
+
 def _general_chat_answer(prompt: str, niche: str, lang: str, learned: Dict[str, Any]) -> Dict[str, Any]:
     intent = _intent(prompt)
     memories = _memory_note(niche)
@@ -158,6 +220,123 @@ def _weather_answer(prompt: str, lang: str, learned: Dict[str, Any]) -> str:
         + "\n\nFor weather, treat this as a live-source summary. Conditions change quickly, so open one of the sources for the exact current temperature, rain chance, and hourly forecast."
         + f"\n\nLanguage: {lang}"
     )
+
+
+def _phone_answer(prompt: str, lang: str, learned: Dict[str, Any], context: str = "") -> str:
+    lines = _source_signal_lines(learned)
+    models = _extract_phone_models(learned)
+    context_line = f"{context}\n\n" if context else ""
+    if not lines:
+        return (
+            f"{context_line}I can help with '{prompt}', but I do not have enough fresh source signals in this response to rank exact models safely.\n\n"
+            "Good phone shortlist rule under this budget: compare processor, camera samples, battery/charging, software updates, display quality, and service support. "
+            "For India pricing, always verify the final cart price because offers change daily."
+            f"\n\nLanguage: {lang}"
+        )
+
+    shortlist = ""
+    if models:
+        shortlist = (
+            "Source-backed shortlist from the latest snippets:\n"
+            + "\n".join(f"{index + 1}. {model}" for index, model in enumerate(models[:5]))
+            + "\n\n"
+        )
+
+    return (
+        f"{context_line}Short answer: for '{prompt}', start with these current candidates, then verify final sale price and variants before buying.\n\n"
+        + shortlist
+        + "Do not choose only by headline specs. Compare real camera samples, battery life, update promise, thermals, and after-sales support.\n\n"
+        "Fresh source signals I checked:\n"
+        + "\n".join(lines[:5])
+        + "\n\nHow to decide:\n"
+        "1. Pick performance first if you game or edit video.\n"
+        "2. Pick camera proof first if you make reels, reviews, or family videos.\n"
+        "3. Pick battery and service first if this is your main phone for 2-3 years.\n"
+        "4. Verify the exact model price on Amazon/Flipkart/brand store before buying.\n\n"
+        "Ask me for a ranked list with your priority, for example: gaming, camera, battery, or all-rounder."
+        f"\n\nLanguage: {lang}"
+    )
+
+
+def _extract_phone_models(learned: Dict[str, Any]) -> List[str]:
+    models: List[str] = []
+    brand_pattern = re.compile(
+        r"\b(?:OnePlus|Realme|Motorola|Vivo|OPPO|Samsung|Redmi|iQOO|POCO|Nothing|CMF|Honor|Infinix|Tecno|Lava|iPhone|Google Pixel|Pixel)\s+[A-Za-z0-9+ .-]{1,42}",
+        re.IGNORECASE,
+    )
+    for item in learned.get("signals") or []:
+        blob = _clean(f"{item.get('title', '')}. {item.get('snippet', '')}")
+        for match in brand_pattern.findall(blob):
+            model = _clean(match).strip(" .,-")
+            model = re.split(r"\b(?:testifies|comparison|ranked|review|price|prices|camera|battery|under|online|in india)\b", model, flags=re.IGNORECASE)[0].strip(" .,-")
+            if model and any(char.isdigit() for char in model) and model not in models:
+                models.append(model)
+            if len(models) >= 5:
+                return models
+
+        snippet = _clean(item.get("snippet"))
+        for marker in (" are ", " including "):
+            if marker not in snippet:
+                continue
+            tail = snippet.split(marker, 1)[1]
+            tail = tail.split(".", 1)[0]
+            for part in tail.replace(" & ", ", ").split(","):
+                model = _clean(part)
+                if not model or len(model) < 4:
+                    continue
+                lower = model.lower()
+                if any(skip in lower for skip in (
+                    "and more",
+                    "etc",
+                    "compare specs",
+                    "prices to find",
+                    "latest",
+                    "best phones",
+                    "smartphone picks",
+                    "top five",
+                    "our top",
+                )):
+                    continue
+                if not any(char.isdigit() for char in model) and "iphone" not in lower:
+                    continue
+                if model not in models:
+                    models.append(model)
+                if len(models) >= 5:
+                    return models
+    return models
+
+
+def _general_task_answer(prompt: str, niche: str, lang: str, learned: Dict[str, Any], messages: List[Dict[str, Any]]) -> str:
+    lines = _source_signal_lines(learned)
+    context = _recent_user_context(messages)
+    context_line = f"{context}\n\n" if context and _question_is_followup(prompt) else ""
+    lower = prompt.lower()
+    context_lower = context.lower()
+
+    if any(term in f"{lower} {context_lower}" for term in ("phone", "phones", "mobile", "smartphone")):
+        return _phone_answer(prompt, lang, learned, context if _question_is_followup(prompt) else "")
+
+    if lines:
+        answer = (
+            f"{context_line}Here is the useful answer for '{prompt}':\n\n"
+            "I checked current source signals, then used them as context instead of copying them. The best next move is to focus on the part that changes your decision or action.\n\n"
+            "What I found:\n"
+            + "\n".join(lines[:5])
+            + "\n\n"
+            "My take:\n"
+            "- Use the freshest source for facts that can change, like prices, weather, tools, product specs, or news.\n"
+            "- Use reasoning for the decision: what matters, what risk to avoid, and what action is worth taking next.\n"
+            "- Save only the useful lesson to memory so future answers improve without filling BaiuGPT with noisy pages."
+        )
+    else:
+        answer = (
+            f"{context_line}Here is my answer for '{prompt}':\n\n"
+            "This does not need a web search unless you want fresh facts. I will answer directly, keep the reasoning visible, and only ask a follow-up if it changes the result.\n\n"
+            "Best next step: tell me the outcome you want, and I will turn it into a clear answer, plan, script, code idea, or comparison."
+        )
+
+    rules = "; ".join(_claude_style_rules()[:3])
+    return f"{answer}\n\nBaiuGPT chat mode: {rules}.\n\nLanguage: {lang}"
 
 
 def _make_task_smarter(task: Dict[str, Any], niche: str, lang: str, trend_index: int) -> Dict[str, Any]:
@@ -250,9 +429,16 @@ def refine_task_guide(payload: Dict[str, Any], base: Dict[str, Any]) -> Dict[str
     return refined
 
 
-def native_answer(prompt: str, niche: str = "content creation", lang: str = "English") -> Dict[str, Any]:
+def native_answer(
+    prompt: str,
+    niche: str = "content creation",
+    lang: str = "English",
+    messages: List[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    messages = messages or []
     prompt = _clean(prompt, "Give me a creator plan")
-    learned = learn_online(prompt, niche=niche, lang=lang, deep=True) if should_learn_online(prompt) else {
+    learning_query = _learning_query(prompt, messages)
+    learned = learn_online(learning_query, niche=niche, lang=lang, deep=True) if should_learn_online(learning_query) else {
         "status": "skipped",
         "reason": "low-value chat prompt",
         "learned": 0,
@@ -265,7 +451,7 @@ def native_answer(prompt: str, niche: str = "content creation", lang: str = "Eng
     memories = _memory_note(niche)
     self_qs = self_questions(prompt, niche)
     followups = user_followups(prompt, niche)
-    is_creator_niche = any(term in niche.lower() for term in ("youtube", "creator", "tech review", "gaming", "cooking", "fitness", "education", "beauty", "finance"))
+    is_creator_niche = _is_creator_niche(niche)
     heading = f"BaiuGPT native plan for {niche}" if is_creator_niche else "BaiuGPT native answer"
     main_decision = (
         f"turn '{prompt}' into one viewer promise"
@@ -300,21 +486,13 @@ def native_answer(prompt: str, niche: str = "content creation", lang: str = "Eng
             f"Online learning: saved {learned.get('learned', 0)} new source signals."
         )
     else:
-        answer = (
-            f"{heading}:\n\n"
-            f"You asked: {prompt}\n\n"
-            "What I can do now: I searched for useful source signals, saved the clean notes locally, and rebuilt the local training dataset automatically.\n\n"
-            "What I found:\n"
-            + ("\n".join(signal_lines) if signal_lines else "- No strong new source signal was needed for this prompt.")
-            + "\n\n"
-            "My current answer: use the source links as fresh context, then ask me for the exact format you want: quick answer, detailed explanation, comparison table, code, script, or step-by-step plan.\n\n"
-            "Self-checks I used:\n"
+        answer = _general_task_answer(prompt, niche, lang, learned, messages)
+        answer += (
+            "\n\nSelf-checks:\n"
             + "\n".join(f"- {question}" for question in self_qs)
-            + "\n\n"
-            "Questions for you:\n"
-            + "\n".join(f"- {question}" for question in followups)
-            + "\n\n"
-            f"Language: {lang}\n{memories}\n"
+            + "\n\nUseful follow-up:\n"
+            + "\n".join(f"- {question}" for question in followups[:2])
+            + f"\n\n{memories}\n"
             f"Online learning: saved {learned.get('learned', 0)} new source signals."
         )
     return {

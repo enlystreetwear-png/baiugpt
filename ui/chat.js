@@ -8,6 +8,7 @@ const nicheInput = document.querySelector("#nicheInput");
 const langInput = document.querySelector("#langInput");
 const apiKeyInput = document.querySelector("#apiKeyInput");
 const newChatBtn = document.querySelector("#newChatBtn");
+let chatHistory = [];
 
 const savedKey = localStorage.getItem(API_KEY_STORAGE);
 if (savedKey) apiKeyInput.value = savedKey;
@@ -57,6 +58,11 @@ function addMessage(role, text, meta = {}) {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
+function rememberChat(role, text) {
+  chatHistory.push({ role, text });
+  if (chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
+}
+
 function setStatus(status) {
   const device = status.device || {};
   const gpuText = device.gpuName || "CPU";
@@ -86,6 +92,7 @@ async function sendPrompt(prompt) {
     prompt,
     niche: nicheInput.value || "content creation",
     lang: langInput.value || "English",
+    messages: chatHistory.slice(-8),
   };
   const response = await fetch(endpoint, {
     method: "POST",
@@ -105,6 +112,7 @@ formEl.addEventListener("submit", async (event) => {
 
   localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value);
   addMessage("user", prompt);
+  rememberChat("user", prompt);
   promptEl.value = "";
   sendBtn.disabled = true;
   sendBtn.textContent = "Thinking";
@@ -114,10 +122,12 @@ formEl.addEventListener("submit", async (event) => {
     if (data.error) {
       addMessage("assistant", `Error: ${data.error}`);
     } else {
-      addMessage("assistant", data.answer || "No answer returned.", {
+      const answer = data.answer || "No answer returned.";
+      addMessage("assistant", answer, {
         sources: data.sources || [],
         curiosity: data.curiosity,
       });
+      rememberChat("assistant", answer);
       await loadStatus();
     }
   } catch (error) {
@@ -131,6 +141,7 @@ formEl.addEventListener("submit", async (event) => {
 
 newChatBtn.addEventListener("click", () => {
   messagesEl.innerHTML = "";
+  chatHistory = [];
   addMessage("assistant", "New local BaiuGPT chat ready. Ask normally. I will skip useless searches, learn from useful questions, and keep the answer in general-purpose mode unless you choose a niche.");
 });
 

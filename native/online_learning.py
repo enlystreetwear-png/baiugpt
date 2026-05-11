@@ -36,6 +36,14 @@ def _is_weather_query(query: str) -> bool:
     return any(term in q for term in ("weather", "temperature", "forecast", "rain", "humidity"))
 
 
+def _is_phone_price_query(query: str) -> bool:
+    q = _clean(query).lower()
+    return (
+        any(term in q for term in ("phone", "phones", "mobile", "mobiles", "smartphone"))
+        and any(term in q for term in ("rs", "₹", "under", "below", "29999", "30000"))
+    )
+
+
 def should_learn_online(query: str) -> bool:
     query = _clean(query).lower().strip(" ?!.")
     if not query:
@@ -95,7 +103,18 @@ def _is_bad_source(item: Dict[str, str], query: str = "") -> bool:
             "bbc weather",
             "weather underground",
         )
-        return not any(term in blob for term in weather_terms)
+        if not any(term in blob for term in weather_terms):
+            return True
+        q = _clean(query).lower()
+        if "puducherry" in q or "pondicherry" in q:
+            return "puducherry" not in blob and "pondicherry" not in blob
+        return False
+    if _is_phone_price_query(query):
+        if "best buy" in blob and "india" not in blob:
+            return True
+        phone_terms = ("phone", "mobile", "smartphone")
+        india_price_terms = ("india", "rs", "₹", "29999", "30000", "30,000", "under 30")
+        return not any(term in blob for term in phone_terms) or not any(term in blob for term in india_price_terms)
     return False
 
 
@@ -103,7 +122,7 @@ def _base_search_query(query: str, niche: str) -> str:
     q = query.lower()
     if _is_weather_query(query):
         return f"{query} current weather hourly forecast temperature rain"
-    if any(term in q for term in ("phone", "phones", "mobile", "mobiles", "smartphone")) and any(term in q for term in ("rs", "₹", "under", "below", "29999", "30000")):
+    if _is_phone_price_query(query):
         return "best smartphones under 30000 India 2026 review price camera battery performance"
     return f"{query} {niche} latest facts trends guide examples"
 
@@ -169,6 +188,7 @@ def learn_online(
         item_id = _fingerprint(query, item["title"], item["url"])
         if item_id in known:
             sources.append({"title": item["title"], "url": item["url"]})
+            signals.append(item)
             continue
 
         memory = {

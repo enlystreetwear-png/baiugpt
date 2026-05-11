@@ -76,6 +76,7 @@ class NativeGenerateRequest(BaseModel):
     prompt: str
     niche: Optional[str] = "content creation"
     lang: Optional[str] = "English"
+    messages: Optional[List[Dict[str, Any]]] = []
 
 class NativeFeedbackRequest(BaseModel):
     niche: Optional[str] = ""
@@ -210,7 +211,12 @@ def ai_coach(request: CoachRequest, x_api_key: str = Header(...)):
 def native_generate(request: NativeGenerateRequest, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
     try:
-        return native_answer(request.prompt, niche=request.niche or "content creation", lang=request.lang or "English")
+        return native_answer(
+            request.prompt,
+            niche=request.niche or "content creation",
+            lang=request.lang or "English",
+            messages=request.messages or [],
+        )
     except Exception as e:
         return {"error": str(e)}
 
